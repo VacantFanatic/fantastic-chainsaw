@@ -11,7 +11,10 @@
 
   --phosphor-bg: #0b0f0a;
   --phosphor-fg: #63e08a;
-  --phosphor-dim: #2f5b3d;
+  /* Dim *text*. Must clear 4.5:1 on --phosphor-bg; currently 5.42:1.
+     Borders use --phosphor-line instead, so they can stay quiet. */
+  --phosphor-dim: #4f9668;
+  --phosphor-line: #2f5b3d;
 
   --mono: "Space Mono", "IBM Plex Mono", ui-monospace, monospace;
   --serif: "Lora", Georgia, "Times New Roman", serif;
@@ -77,7 +80,7 @@ body.phosphor #static-strip {
 }
 
 body.phosphor .site-head {
-  border-bottom-color: var(--phosphor-dim);
+  border-bottom-color: var(--phosphor-line);
 }
 
 .site-head__tag {
@@ -182,7 +185,7 @@ body.phosphor .directory__label {
 }
 
 body.phosphor .directory__list {
-  border-top-color: var(--phosphor-dim);
+  border-top-color: var(--phosphor-line);
 }
 
 .entry {
@@ -191,7 +194,7 @@ body.phosphor .directory__list {
 }
 
 body.phosphor .entry {
-  border-bottom-color: var(--phosphor-dim);
+  border-bottom-color: var(--phosphor-line);
 }
 
 .entry__link {

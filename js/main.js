@@ -6,38 +6,52 @@ function initStaticStrip() {
   if (!canvas) return;
 
   const ctx = canvas.getContext("2d");
+
+  // The noise is generated at CSS-pixel size in an offscreen buffer and
+  // then scaled up to the device-pixel canvas. Two reasons: putImageData
+  // ignores the transform matrix, so writing CSS-sized ImageData straight
+  // to a HiDPI canvas only fills the top-left corner of it; and drawing
+  // through drawImage keeps the grain the same apparent size on every
+  // display instead of going fine and smooth on retina screens.
+  const buffer = document.createElement("canvas");
+  const bufferCtx = buffer.getContext("2d");
+
   let width = 0;
   let height = 0;
 
   function resize() {
-    width = canvas.clientWidth;
-    height = canvas.clientHeight;
-    canvas.width = width * window.devicePixelRatio;
-    canvas.height = height * window.devicePixelRatio;
-    ctx.setTransform(
-      window.devicePixelRatio,
-      0,
-      0,
-      window.devicePixelRatio,
-      0,
-      0,
-    );
+    const dpr = window.devicePixelRatio || 1;
+    width = Math.max(1, Math.round(canvas.clientWidth));
+    height = Math.max(1, Math.round(canvas.clientHeight));
+
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    buffer.width = width;
+    buffer.height = height;
+
+    // Resizing a canvas resets its context, so both of these have to be
+    // reapplied here rather than set once at startup.
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
   }
 
   function draw() {
-    const imageData = ctx.createImageData(width, height);
+    const imageData = bufferCtx.createImageData(width, height);
+    const data = imageData.data;
     const isPhosphor = document.body.classList.contains("phosphor");
     const tint = isPhosphor ? [99, 224, 138] : [33, 40, 59];
 
-    for (let i = 0; i < imageData.data.length; i += 4) {
+    for (let i = 0; i < data.length; i += 4) {
       const shade = Math.random();
-      imageData.data[i] = tint[0] * shade;
-      imageData.data[i + 1] = tint[1] * shade;
-      imageData.data[i + 2] = tint[2] * shade;
-      imageData.data[i + 3] = 255 * shade * 0.5;
+      data[i] = tint[0] * shade;
+      data[i + 1] = tint[1] * shade;
+      data[i + 2] = tint[2] * shade;
+      data[i + 3] = 255 * shade * 0.5;
     }
 
-    ctx.putImageData(imageData, 0, 0);
+    bufferCtx.putImageData(imageData, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+    ctx.drawImage(buffer, 0, 0, width, height);
   }
 
   const prefersReducedMotion = window.matchMedia(
