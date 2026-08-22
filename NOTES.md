@@ -540,6 +540,27 @@ in this browser`, or `needs https or localhost` rather than failing
   only from 3 up -- which means an old level 1 link renders without the
   subclass line it used to show. That is the same trade the SRD proofread
   made when it corrected the dragonborn breath weapon: the rules win.
+- **The level knob worked; the panel lied about it.** Shipped in the
+  previous change and reported straight away as "doesn't seem to do
+  anything". It did: hit points and proficiency were scaling correctly.
+  What was broken is everything that _says_ the level -- the sheet's level
+  field was never written, the display's build line had `level 1` hard
+  coded, the spell-slot line printed the level 1 count, the announcement
+  and the PDF export said level 1, and the features gained on the way up
+  were computed into `character.levelFeatures` and then thrown away by a
+  `fillList` that still concatenated the subclass by hand.
+  Cause: a single edit script wrote nothing, and nobody checked the file
+  afterwards. The lesson is not about levels. **After a scripted edit,
+  grep the file for each change before believing it landed** -- an
+  assertion that passes proves the match, not the write.
+- **The lamp bank clusters instead of stacking.** On a wide panel it ran
+  as one tall column pinned to the right edge with the middle of the
+  display empty. Each head and its lamps are now wrapped in a
+  `.lampgroup` so a column break cannot separate them, and above 60rem
+  the bank flows `column wrap` against a capped height: the groups spread
+  into as many columns as they need. At 1280px that is four columns,
+  136px tall, against the 470px single column it was. Narrow screens keep
+  the row-wrap layout they already had.
 
 Open items:
 
