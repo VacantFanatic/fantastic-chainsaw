@@ -571,19 +571,25 @@
   transform-origin: 50% 1.55rem;
 }
 
-.knob__tick--a {
-  transform: rotate(-38deg);
-}
-
-.knob__tick--b {
-  transform: rotate(38deg);
+/* Tick angles are set inline by drawKnobTicks, from the same maths that
+   turns the dial, so a knob cannot drift out of step with its own marks. */
+.knob__ticks {
+  position: absolute;
+  inset: 0;
+  display: block;
 }
 
 /* The live position reads in the signal colour, so the knob says what it is
    set to without relying on the pointer angle alone. */
-.knob[data-position="0"] .knob__tick--a,
-.knob[data-position="1"] .knob__tick--b {
+.knob__tick.is-on {
   background: var(--signal);
+}
+
+.mode__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.6rem;
+  line-height: 1.35;
+  color: var(--ink-soft);
 }
 
 .key--wide {
@@ -1065,4 +1071,119 @@
   .abil {
     break-inside: avoid;
   }
+}
+
+/* ---------------------------------------------------------
+   Setting skins
+
+   The setting knob only re-skins the panel for now -- nothing here reaches
+   the generator. Each block is a straight token swap, so a piece that
+   already routes every colour through :root needs no other changes.
+
+   Every palette was checked rather than eyeballed: --ink, --ink-soft and
+   --signal-text clear 4.5:1 on each surface they land on, --screen-fg and
+   --screen-dim clear it on --screen, and --card clears it on the --signal
+   fill for the master key. --rule and --panel-edge are borders and are
+   free to stay faint. Generic is the base :root palette and is not
+   repeated here.
+   --------------------------------------------------------- */
+
+/* forgotten realms */
+.page-forge[data-setting="forgotten-realms"] {
+  --bone: #d7dde4;
+  --panel: #c9d2dc;
+  --panel-sunk: #bcc7d3;
+  --panel-edge: #93a5b8;
+  --card: #e6ebf1;
+
+  --ink: #0b1622;
+  --ink-soft: #2c5a8c;
+  --rule: #93a5b8;
+  --rule-strong: #16202c;
+
+  --signal: #1d5a8f;
+  --signal-edge: #123c61;
+  --signal-text: #175081;
+
+  --screen: #060d15;
+  --screen-fg: #7fc9ff;
+  --screen-dim: #5fa3d6;
+
+  --key-face: #e6ebf1;
+  --key-edge: #93a5b8;
+}
+
+/* greyhawk */
+.page-forge[data-setting="greyhawk"] {
+  --bone: #ddd2b4;
+  --panel: #d2c5a3;
+  --panel-sunk: #c6b895;
+  --panel-edge: #a89469;
+  --card: #e9e1cb;
+
+  --ink: #1a1408;
+  --ink-soft: #4a3413;
+  --rule: #a89469;
+  --rule-strong: #2a2113;
+
+  --signal: #67661e;
+  --signal-edge: #43420f;
+  --signal-text: #535318;
+
+  --screen: #0a0d07;
+  --screen-fg: #8ee06a;
+  --screen-dim: #6fb352;
+
+  --key-face: #e9e1cb;
+  --key-edge: #a89469;
+}
+
+/* dark sun */
+.page-forge[data-setting="dark-sun"] {
+  --bone: #e0c79a;
+  --panel: #d6b881;
+  --panel-sunk: #c9a96d;
+  --panel-edge: #b08d4e;
+  --card: #eddcbb;
+
+  --ink: #1d0f04;
+  --ink-soft: #4a2409;
+  --rule: #b08d4e;
+  --rule-strong: #2e1a08;
+
+  --signal: #aa3a0a;
+  --signal-edge: #742706;
+  --signal-text: #7d2a07;
+
+  --screen: #140702;
+  --screen-fg: #ff8a3d;
+  --screen-dim: #d4692a;
+
+  --key-face: #eddcbb;
+  --key-edge: #b08d4e;
+}
+
+/* dragonlance */
+.page-forge[data-setting="dragonlance"] {
+  --bone: #d9d5e2;
+  --panel: #cbc6d8;
+  --panel-sunk: #beb8cd;
+  --panel-edge: #9a92b0;
+  --card: #e8e5ef;
+
+  --ink: #120d1c;
+  --ink-soft: #33254d;
+  --rule: #9a92b0;
+  --rule-strong: #1f1830;
+
+  --signal: #7a2f5e;
+  --signal-edge: #54203f;
+  --signal-text: #6b2952;
+
+  --screen: #0a0710;
+  --screen-fg: #c9a6ff;
+  --screen-dim: #a382d6;
+
+  --key-face: #e8e5ef;
+  --key-edge: #9a92b0;
 }
