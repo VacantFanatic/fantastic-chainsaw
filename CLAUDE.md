@@ -65,12 +65,16 @@ js/main.js          home page behavior (static strip, phosphor toggle)
 pages/              one file (or pair) per piece; interactive or prose
 NOTES.md            running review notes: known issues, open items
 .prettierrc.json    formatting; the whole tree complies
+.gitattributes      forces LF checkouts so prettier agrees with CI
+.github/workflows/  CI: format, local links, no-build-step guard
 ```
 
 ## Conventions
 
-- Format before committing: `npx prettier --write "**/*.{html,css,js}"`.
-  The tree is currently fully compliant — keep it that way.
+- Format before committing:
+  `npx prettier@3.9.6 --write "**/*.{html,css,js,json,md}"`. CI checks the
+  same glob at the same pinned version, so this is always enough to make it
+  pass. The tree is currently fully compliant — keep it that way.
 - Colors go through tokens in `:root`. No hardcoded hex in rules.
 - Canvas work is HiDPI-correct: size the backing store in device pixels,
   and remember `putImageData` ignores the transform matrix (this was a
@@ -81,5 +85,8 @@ NOTES.md            running review notes: known issues, open items
 
 ## Still open
 
-Not yet wired up: hosting/deploy, a custom domain, `.gitignore`, and CI.
-See the "Repo hygiene" section of `NOTES.md`.
+Not yet wired up: hosting/deploy and a custom domain. `main` also has no
+server-side protection — the repo is private on a free plan, so GitHub
+refuses branch protection and rulesets. Branch-per-change is a convention
+here, not something the remote enforces. See the "Repo hygiene" section of
+`NOTES.md`.

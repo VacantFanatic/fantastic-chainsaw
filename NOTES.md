@@ -203,17 +203,38 @@ default` hides this from mouse users, but they're still in the tab order
 
 ## Repo hygiene
 
-Still missing, in rough priority order:
-
-1. **`.gitignore`** — nothing ignores `node_modules/` yet, and the README
-   tells contributors to run `npx prettier`. One stray `npm install` and the
-   tree gets noisy.
-2. **CI** — a GitHub Actions job running `prettier --check` on pull
-   requests. The formatting is currently clean (verified), so this locks in
-   a property that already holds.
-3. **Deploy** — no Pages workflow, no `netlify.toml`, no `CNAME`. The README
+1. ~~**`.gitignore`**~~ **Done.** Ignores `node_modules/`, npm logs, and OS
+   and editor cruft. The point is to keep the "no runtime dependencies"
+   claim true after someone runs `npx prettier`.
+2. ~~**CI**~~ **Done.** `.github/workflows/ci.yml` runs on every pull
+   request and on pushes to `main`. Three checks:
+   - `prettier --check`, pinned to 3.9.6 and covering `html,css,js,json,md`.
+     Pinned because there is no `package.json` to lock a version in, so an
+     unpinned `npx prettier` would let an upstream release turn CI red with
+     no commit behind it. README and CLAUDE.md name the same version and
+     glob, so running the documented command is always enough.
+   - `.github/scripts/check-links.mjs` — resolves every local `href`/`src`
+     in every HTML file. The index is hand-ordered with no build step, so a
+     renamed page in `pages/` otherwise breaks a link silently. Remote URLs
+     are deliberately not fetched: CI should not depend on the network.
+   - A guard that no `package.json` or `node_modules` has appeared and
+     `index.html` still exists — the no-build-step rule asserted rather
+     than trusted.
+3. **`.gitattributes` was the prerequisite.** Git stores this tree as LF,
+   but a Windows clone with `core.autocrlf=true` checks it out as CRLF, and
+   `prettier --check` then fails on files nobody touched while CI on Linux
+   passes. `* text=auto eol=lf` makes every checkout agree. This was a real
+   papercut, not a hypothetical — it produced five phantom failures.
+4. **`main` is not protected, and cannot be yet.** Branch-per-change is the
+   convention, but the remote does not enforce it: the repo is private on a
+   free plan, and both the branch-protection and rulesets APIs return 403
+   "Upgrade to GitHub Pro or make this repository public". Making it public
+   or upgrading are the only two ways to get a real gate; both are a
+   deliberate call, not a default. Until then CI reports on PRs but nothing
+   stops a direct push to `main`.
+5. **Deploy** — no Pages workflow, no `netlify.toml`, no `CNAME`. The README
    describes the options but nothing is wired up, so the site isn't live.
-4. **`LICENSE`** — optional for a personal site, but worth a deliberate call.
+6. **`LICENSE`** — optional for a personal site, but worth a deliberate call.
 
 ## What's already good
 
@@ -274,7 +295,7 @@ Open items:
    actually wrong and are now fixed:
 
    - Dragonborn Breath Weapon was `2d6`; SRD 5.2.1 is `1d10`.
-   - Dragonborn breath *shape* was pinned per ancestry colour (Gold =
+   - Dragonborn breath _shape_ was pinned per ancestry colour (Gold =
      Cone, Black = Line, and so on). That's a 2014 rule. The Draconic
      Ancestors table sets the damage type only; the shape is chosen at
      each use, so the notes now read "Acid damage" and the trait line
@@ -301,8 +322,8 @@ Open items:
 2. **The generator is wider than the SRD, and the spec row overstates
    the licence.** Deliberate, but worth knowing: 12 of the 16
    backgrounds, 8 of the 12 origin feats, and 2 of the 6 fighting styles
-   (Dueling, Protection) are 2024 PHB content that is *not* in SRD 5.2.1
-   and *not* covered by CC BY 4.0. The SRD has only four backgrounds
+   (Dueling, Protection) are 2024 PHB content that is _not_ in SRD 5.2.1
+   and _not_ covered by CC BY 4.0. The SRD has only four backgrounds
    (Acolyte, Criminal, Sage, Soldier — all four correct here) and four
    origin feats (Alert, Magic Initiate, Savage Attacker, Skilled). Note
    that `maxHp` grants +2 for **Tough**, which is one of the non-SRD

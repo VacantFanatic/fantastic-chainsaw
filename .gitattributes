@@ -1,0 +1,5 @@
+# Git already stores every text file in this repo with LF endings. Without
+# this file, a Windows clone with core.autocrlf=true checks them out as CRLF,
+# and `prettier --check` then fails on files nobody has touched -- while CI
+# on Linux passes. Pinning eol=lf makes every checkout agree with CI.
+* text=auto eol=lf
