@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>STATIC — a personal corner of the internet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <canvas id="static-strip" aria-hidden="true"></canvas>
+
+    <header class="site-head">
+      <div class="site-head__mast">
+        <span class="site-head__tag">// broadcasting since 2026</span>
+        <h1 class="site-head__title">STATIC</h1>
+        <p class="site-head__sub">
+          a personal corner of the internet — no feed, no algorithm, no
+          notifications. just pages, kept on purpose.
+        </p>
+      </div>
+      <button id="phosphor-toggle" class="phosphor-toggle" type="button">
+        <span class="phosphor-toggle__dot"></span>
+        phosphor mode
+      </button>
+    </header>
+
+    <main class="directory">
+      <p class="directory__label">index of /</p>
+      <ol class="directory__list">
+        <li class="entry">
+          <a class="entry__link" href="pages/starfield.html">
+            <span class="entry__num">01</span>
+            <span class="entry__name">a slow drift</span>
+            <span class="entry__kind">[interactive / art]</span>
+          </a>
+          <p class="entry__note">
+            a field of quiet stars that follows your cursor. no goal, no score.
+            just company.
+          </p>
+        </li>
+
+        <li class="entry entry--placeholder">
+          <a class="entry__link" href="#">
+            <span class="entry__num">02</span>
+            <span class="entry__name">field notes</span>
+            <span class="entry__kind">[blog]</span>
+          </a>
+          <p class="entry__note">
+            long-form writing goes here. add entries under
+            <code>/pages/</code> as they're written.
+          </p>
+        </li>
+
+        <li class="entry entry--placeholder">
+          <a class="entry__link" href="#">
+            <span class="entry__num">03</span>
+            <span class="entry__name">???</span>
+            <span class="entry__kind">[tbd]</span>
+          </a>
+          <p class="entry__note">reserved for whatever gets built next.</p>
+        </li>
+      </ol>
+    </main>
+
+    <footer class="site-foot">
+      <p>
+        built by hand, hosted on purpose.
+        <a href="https://github.com/" target="_blank" rel="noopener">source</a>
+      </p>
+    </footer>
+
+    <script src="js/main.js"></script>
+  </body>
+</html>

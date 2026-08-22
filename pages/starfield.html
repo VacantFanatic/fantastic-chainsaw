@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>a slow drift — STATIC</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <style>
+      body.page-starfield {
+        overflow: hidden;
+        height: 100vh;
+        background: var(--phosphor-bg);
+        color: var(--phosphor-fg);
+      }
+
+      .piece-head {
+        position: relative;
+        z-index: 2;
+        padding: 1.5rem 2rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+
+      .piece-head a {
+        font-family: var(--mono);
+        font-size: 0.75rem;
+        color: var(--phosphor-fg);
+        text-decoration: none;
+        border: 1px solid var(--phosphor-dim);
+        padding: 0.4rem 0.7rem;
+        border-radius: 2px;
+        white-space: nowrap;
+      }
+
+      .piece-head a:focus-visible {
+        outline: 2px solid var(--phosphor-fg);
+        outline-offset: 2px;
+      }
+
+      .piece-title {
+        font-family: var(--mono);
+        margin: 0;
+        font-size: 1rem;
+        letter-spacing: 0.04em;
+        color: var(--phosphor-dim);
+      }
+
+      #stars {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+      }
+
+      .piece-hint {
+        position: absolute;
+        bottom: 1.5rem;
+        left: 0;
+        right: 0;
+        text-align: center;
+        z-index: 2;
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--phosphor-dim);
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body class="page-starfield">
+    <canvas id="stars"></canvas>
+
+    <header class="piece-head">
+      <h1 class="piece-title">01 / a slow drift</h1>
+      <a href="../index.html">&larr; back to index</a>
+    </header>
+
+    <p class="piece-hint">move your cursor. the field remembers, briefly.</p>
+
+    <script src="starfield.js"></script>
+  </body>
+</html>
