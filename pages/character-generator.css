@@ -194,6 +194,269 @@
   box-shadow: 0 24px 40px -34px var(--shadow);
 }
 
+/* ---------------------------------------------------------
+   Port strip
+
+   The top edge of the machine: labelled chips sitting half off the
+   panel, the way the jacks are labelled on the hardware. A lit chip is
+   a plugged port, not just an open drawer -- the strip reports state,
+   so it uses the same filled/hollow split the lamps do.
+   --------------------------------------------------------- */
+.unit__ports {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin: -1.1rem -1.1rem 0.9rem;
+  padding: 0.35rem 0.5rem 0.4rem;
+  background: var(--panel-sunk);
+  border-bottom: 1px solid var(--panel-edge);
+  border-radius: 2px 2px 0 0;
+}
+
+.port {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: var(--key-face);
+  border: 1px solid var(--key-edge);
+  border-radius: 2px;
+  padding: 0.25rem 0.7rem;
+  min-height: 24px;
+  cursor: pointer;
+}
+
+/* The chips are deliberately small -- they are labels on an edge, not
+   keys -- but 24px is not a touch target. On a finger, they grow. */
+@media (pointer: coarse) {
+  .port,
+  .party__pull {
+    min-height: 44px;
+    padding-left: 0.9rem;
+    padding-right: 0.9rem;
+  }
+}
+
+.port--dead {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.port[aria-expanded="true"] {
+  border-color: var(--rule-strong);
+}
+
+/* Plugged, as opposed to merely open: something is actually patched into
+   this port. --card on --signal is the same pairing the master key uses,
+   and was checked at the same time. */
+.port.is-live {
+  background: var(--signal);
+  border-color: var(--signal-edge);
+  color: var(--card);
+}
+
+/* ---------------------------------------------------------
+   Port bays
+   --------------------------------------------------------- */
+/* The drawer slides out of the top edge, under the strip. 0fr to 1fr is
+   the one way to animate to a height nobody has measured; .bay__inner
+   does the clipping while it runs. The attribute is still what closes it
+   -- nothing inside a shut drawer should be focusable -- so the JS waits
+   for the transition before setting it. */
+.bays {
+  display: grid;
+  gap: 0;
+}
+
+.bay {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.22s ease;
+}
+
+.bay.is-open {
+  grid-template-rows: 1fr;
+}
+
+.bay__inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.bay__panel {
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--panel-edge);
+  border-radius: 3px;
+}
+
+/* One surface for the whole drawer, because --ink-soft is the secondary
+   text colour in here and it only clears AA on some of them: on --card it
+   is 5.94:1 at worst (forgotten realms), on --panel-sunk it is 4.15:1,
+   which fails. Fields are told apart by their border rather than by a
+   second background -- the hairline is doing that job everywhere else on
+   this panel anyway. */
+
+@media (prefers-reduced-motion: reduce) {
+  .bay {
+    transition: none;
+  }
+}
+
+.bay__title {
+  margin: 0 0 0.4rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-soft);
+}
+
+.bay__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.7rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 46ch;
+}
+
+.bay__body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-top: 0.7rem;
+}
+
+.bay__field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+.bay__field input {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ink);
+  width: 4rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--key-edge);
+  border-radius: 2px;
+}
+
+.bay__status {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+/* --- input: five jacks, numbered like the deck ------------------------ */
+.jacks {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.7rem;
+}
+
+.jack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.jack__num {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--ink-soft);
+}
+
+.jack__label {
+  font-size: 0.7rem;
+  color: var(--ink);
+}
+
+.jack input {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  color: var(--ink);
+  width: 100%;
+  min-height: 32px;
+  padding: 0.35rem 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--key-edge);
+  border-radius: 2px;
+}
+
+.jack input::placeholder {
+  color: var(--ink-soft);
+}
+
+/* A patched jack reads as live at a glance, and not by colour alone --
+   the border thickens on the side the cable would enter. */
+.jack.is-patched input {
+  border-color: var(--signal-edge);
+  border-left-width: 3px;
+}
+
+/* --- sync: the party list --------------------------------------------- */
+.party {
+  flex: 1 1 22rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.party__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.75rem;
+  color: var(--ink);
+  padding: 0.35rem 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--key-edge);
+  border-radius: 2px;
+}
+
+.party__num {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  color: var(--ink-soft);
+}
+
+.party__name {
+  font-weight: 700;
+}
+
+.party__build {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+}
+
+.party__pull {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--signal-text);
+  background: none;
+  border: 1px solid var(--key-edge);
+  border-radius: 2px;
+  padding: 0.2rem 0.5rem;
+  min-height: 24px;
+  cursor: pointer;
+}
+
 .unit__head {
   display: flex;
   align-items: center;
@@ -1169,6 +1432,10 @@
   }
 
   .channels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jacks {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

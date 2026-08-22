@@ -1262,6 +1262,74 @@ function settingFor(id) {
   return SETTINGS.find((entry) => entry.id === id) || SETTINGS[0];
 }
 
+// Cartridges clamp what the machine is allowed to roll. Shaped like
+// SETTINGS -- a table, not logic -- and like SETTINGS the first entry is
+// the absence of one and writes nothing to the serial. A cartridge does
+// change what a seed produces, so it has to be in the serial: without it
+// an old link would rebuild a different character.
+const CARTRIDGES = [
+  {
+    id: "none",
+    label: "no cartridge",
+    note: "the machine rolls the whole book.",
+  },
+  {
+    id: "casters",
+    label: "casters only",
+    note: "every roll comes back holding a spell list.",
+    classes: (list) => list.filter((cls) => cls.casting),
+  },
+  {
+    id: "martial",
+    label: "no magic",
+    note: "nobody who casts. swords, fists and nerve.",
+    classes: (list) => list.filter((cls) => !cls.casting),
+  },
+  {
+    id: "no-humans",
+    label: "no humans",
+    note: "the human entry is skipped on the species channel.",
+    species: (list) => list.filter((entry) => entry.id !== "human"),
+  },
+  {
+    id: "small-folk",
+    label: "small folk",
+    note: "gnomes and halflings, and whatever they get up to.",
+    species: (list) =>
+      list.filter((entry) => entry.id === "gnome" || entry.id === "halfling"),
+  },
+  {
+    id: "frontline",
+    label: "frontline",
+    note: "d10 and d12 hit dice only -- built to be hit.",
+    classes: (list) => list.filter((cls) => cls.hitDie >= 10),
+  },
+];
+
+function cartridgeFor(id) {
+  return CARTRIDGES.find((entry) => entry.id === id) || CARTRIDGES[0];
+}
+
+// A cartridge that filtered a list down to nothing would be a cartridge
+// that breaks the machine, so an empty result falls back to the full list
+// rather than throwing somewhere further down.
+function clampList(list, filter) {
+  if (!filter) return list;
+  const kept = filter(list);
+  return kept.length ? kept : list;
+}
+
+function speciesListFor(cartridgeId) {
+  return clampList(SPECIES, cartridgeFor(cartridgeId).species);
+}
+
+function classListFor(cartridgeId) {
+  return clampList(CLASSES, cartridgeFor(cartridgeId).classes);
+}
+
+// How many characters one serial can describe.
+const PARTY_MAX = 6;
+
 const CHANNELS = ["name", "species", "class", "background", "stats"];
 const SEED_LENGTH = 4;
 
@@ -1286,12 +1354,27 @@ function makeRng(text) {
   };
 }
 
-function randomSeed() {
+// Every seed in the machine is minted here, whatever the entropy behind
+// it: Math.random for a roll, a hash of your text for a patched channel,
+// a derived stream for a party member. Downstream they are the same
+// four characters and nothing can tell them apart.
+function mintSeed(rng) {
   let seed = "";
   for (let i = 0; i < SEED_LENGTH; i += 1) {
-    seed += Math.floor(Math.random() * 36).toString(36);
+    seed += Math.floor(rng() * 36).toString(36);
   }
   return seed.toUpperCase();
+}
+
+function randomSeed() {
+  return mintSeed(Math.random);
+}
+
+// The INPUT port. Text goes in, a seed comes out, and the text itself
+// goes nowhere -- not to the serial, not to the address bar, not to
+// storage. What survives is the four characters it hashed to.
+function seedFromText(text) {
+  return mintSeed(makeRng("patch/" + text));
 }
 
 function pick(rng, list) {
@@ -1477,24 +1560,26 @@ function buildEquipment(cls, background) {
 // The species a seed produces, without rolling the rest of the character.
 // buildCharacter draws the same value as the first pick off its own
 // species stream -- these two have to agree, so they read the same.
-function speciesFor(seed) {
-  return pick(makeRng("species/" + seed), SPECIES);
+function speciesFor(seed, cartridgeId) {
+  return pick(makeRng("species/" + seed), speciesListFor(cartridgeId));
 }
 
 function buildCharacter(state) {
   const speciesRng = makeRng("species/" + state.seeds.species);
+  const speciesList = speciesListFor(state.cartridge);
+  const classList = classListFor(state.cartridge);
   const classRng = makeRng("class/" + state.seeds.class);
   const backgroundRng = makeRng("background/" + state.seeds.background);
   const statsRng = makeRng("stats/" + state.seeds.stats + "/" + state.method);
 
-  const species = pick(speciesRng, SPECIES);
+  const species = pick(speciesRng, speciesList);
   const lineage = species.lineage
     ? pick(speciesRng, species.lineage.options)
     : null;
   const size = pick(speciesRng, species.size);
   const speed = (lineage && lineage.speed) || species.speed;
 
-  const cls = pick(classRng, CLASSES);
+  const cls = pick(classRng, classList);
   const background = pick(backgroundRng, BACKGROUNDS);
   const priority = ABILITY_PRIORITY[cls.id];
 
@@ -1682,6 +1767,11 @@ function syncLamps() {
     setLamp("hold-" + channel, state.holds[channel]);
   });
 
+  setLamp("input", Object.keys(state.patched).length > 0);
+  setLamp("sync", state.party > 1);
+  setLamp("aux", state.cartridge !== CARTRIDGES[0].id);
+  setLamp("midi", midiState.connected);
+
   setLamp("method-array", state.method === "array");
   setLamp("method-dice", state.method === "dice");
 
@@ -1690,6 +1780,27 @@ function syncLamps() {
   const setting = settingFor(state.setting);
   setLamp("setting", setting.id !== SETTINGS[0].id);
   setText("lamp-setting", setting.label);
+
+  setText("lamp-cartridge", cartridgeFor(state.cartridge).label);
+}
+
+// The strip reports what is plugged in, not merely which drawer is open.
+function syncPorts() {
+  const live = {
+    input: Object.keys(state.patched).length > 0,
+    sync: state.party > 1,
+    aux: state.cartridge !== CARTRIDGES[0].id,
+    midi: midiState.connected,
+  };
+
+  document.querySelectorAll("[data-port]").forEach((port) => {
+    port.classList.toggle("is-live", !!live[port.getAttribute("data-port")]);
+  });
+
+  document.querySelectorAll("[data-patch]").forEach((field) => {
+    const channel = field.getAttribute("data-patch");
+    field.parentNode.classList.toggle("is-patched", !!state.patched[channel]);
+  });
 }
 
 function setBars(values) {
@@ -2554,6 +2665,13 @@ const state = {
   holds: {},
   method: "array",
   setting: "generic",
+  cartridge: "none",
+  // 1 is the machine on its own. Above that it is describing a party, and
+  // every member past the first is derived from this serial.
+  party: 1,
+  // Which channels have a cable in them. The text is deliberately not
+  // kept -- only the seed it minted, which is what the serial carries.
+  patched: {},
   // Set only while a held name outlives the species it was drawn from.
   // null means "name follows the current species", which is the usual case.
   nameSpecies: null,
@@ -2576,25 +2694,64 @@ function serialOf(current) {
   // has outlived its species, so nothing that was rolled without one
   // changes shape. "N" plus an index into SPECIES, which is already
   // load-bearing -- reordering that array rewrites every serial anyway.
+  // Optional groups are written in a fixed order -- P, X, then N -- so a
+  // given machine state always spells the same serial.
+  if (current.party > 1) groups.push("P" + current.party);
+
+  const cartridge = CARTRIDGES.findIndex(
+    (entry) => entry.id === current.cartridge,
+  );
+  if (cartridge > 0) groups.push("X" + cartridge);
+
   const pinned = current.nameSpecies;
-  if (pinned && pinned !== speciesFor(current.seeds.species).id) {
+  if (
+    pinned &&
+    pinned !== speciesFor(current.seeds.species, current.cartridge).id
+  ) {
     groups.push("N" + SPECIES.findIndex((entry) => entry.id === pinned));
   }
   return groups.join("-");
 }
 
+// Everything optional rides at the end of the serial behind a letter, so
+// a serial minted before any of it still parses as the shorter thing it
+// is. A seed is always four characters and a tail group is at most three,
+// so the two can never be mistaken for each other.
+const SERIAL_TAIL = {
+  P: {
+    key: "party",
+    read: (value) => (value >= 1 && value <= PARTY_MAX ? value : null),
+  },
+  X: {
+    key: "cartridge",
+    read: (value) => (CARTRIDGES[value] ? CARTRIDGES[value].id : null),
+  },
+  N: {
+    key: "nameSpecies",
+    read: (value) => (SPECIES[value] ? SPECIES[value].id : null),
+  },
+};
+
 function parseSerial(text) {
   const groups = text.replace(/^#/, "").toUpperCase().split("-");
-  // 5 seeds + method, then two optional groups in order: the setting
-  // letter, then the name pin. Both are read off the end, so a serial
-  // that predates either still parses as the shorter thing it is.
   const withMethod = CHANNELS.length + 1;
 
-  let nameSpecies = null;
-  if (/^N\d{1,2}$/.test(groups[groups.length - 1])) {
-    const match = SPECIES[Number(groups.pop().slice(1))];
-    if (!match) return null;
-    nameSpecies = match.id;
+  const tail = { party: 1, cartridge: CARTRIDGES[0].id, nameSpecies: null };
+  const seen = {};
+
+  while (groups.length) {
+    const match = /^([PXN])(\d{1,2})$/.exec(groups[groups.length - 1]);
+    if (!match) break;
+
+    const entry = SERIAL_TAIL[match[1]];
+    const value = entry.read(Number(match[2]));
+    // An out-of-range group, or the same one twice, is refused rather
+    // than shrugged off -- the same stance the setting letter takes.
+    if (value === null || seen[entry.key]) return null;
+
+    seen[entry.key] = true;
+    tail[entry.key] = value;
+    groups.pop();
   }
 
   if (groups.length !== withMethod && groups.length !== withMethod + 1) {
@@ -2621,7 +2778,9 @@ function parseSerial(text) {
     seeds: seeds,
     method: methodGroup === "A" ? "array" : "dice",
     setting: setting,
-    nameSpecies: nameSpecies,
+    cartridge: tail.cartridge,
+    party: tail.party,
+    nameSpecies: tail.nameSpecies,
   };
 }
 
@@ -2652,6 +2811,8 @@ function commit(animated) {
   const serial = serialOf(state);
 
   syncLamps();
+  syncPorts();
+  renderParty();
   setText("serial", serial);
   setText("serial-lcd", serial);
   window.history.replaceState(null, "", "#" + serial);
@@ -2686,15 +2847,21 @@ function commit(animated) {
   }, 55);
 }
 
-function rollChannels(channels, animated) {
-  // Hold the name and roll species and the name has to stay put, even
-  // though the two share a stream. Pin it to the species it was drawn
-  // from before that species goes; rolling the name itself releases it.
+// Hold the name and change the species and the name has to stay put,
+// even though the two share a stream. Pin it to the species it was drawn
+// from before that species goes; changing the name itself releases it.
+// Rolling is not the only way a channel changes any more -- a patch cable
+// does it too -- so both paths come through here.
+function pinNameFor(channels) {
   if (channels.indexOf("name") !== -1) {
     state.nameSpecies = null;
   } else if (channels.indexOf("species") !== -1 && !state.nameSpecies) {
-    state.nameSpecies = speciesFor(state.seeds.species).id;
+    state.nameSpecies = speciesFor(state.seeds.species, state.cartridge).id;
   }
+}
+
+function rollChannels(channels, animated) {
+  pinNameFor(channels);
 
   channels.forEach((channel) => {
     state.seeds[channel] = randomSeed();
@@ -2702,8 +2869,163 @@ function rollChannels(channels, animated) {
   commit(animated);
 }
 
+/* ---------------------------------------------------------
+   SYNC -- one serial, a whole party
+
+   Member 1 is the machine itself. The rest are derived from its serial,
+   so the link rebuilds the entire party -- and each member also spells a
+   serial of its own, which is what the pull button loads.
+   --------------------------------------------------------- */
+
+// Derived from the serial the machine would have on its own, so the
+// party group cannot feed its own derivation.
+function baseSerialOf(current) {
+  return serialOf(Object.assign({}, current, { party: 1 }));
+}
+
+function partySeeds(base, index) {
+  const rng = makeRng("party/" + base + "/" + index);
+  const seeds = {};
+  CHANNELS.forEach((channel) => {
+    seeds[channel] = mintSeed(rng);
+  });
+  return seeds;
+}
+
+function partyMember(current, index) {
+  return {
+    seeds:
+      index === 1 ? current.seeds : partySeeds(baseSerialOf(current), index),
+    method: current.method,
+    setting: current.setting,
+    cartridge: current.cartridge,
+    party: 1,
+    // A derived member was never held, so it has nothing pinned.
+    nameSpecies: index === 1 ? current.nameSpecies : null,
+  };
+}
+
+function renderParty() {
+  const list = byId("party");
+  if (!list) return;
+
+  list.textContent = "";
+  if (state.party < 2) return;
+
+  for (let index = 1; index <= state.party; index += 1) {
+    const member = partyMember(state, index);
+    const character = buildCharacter(member);
+    const serial = serialOf(member);
+
+    const row = document.createElement("li");
+    row.className = "party__row";
+
+    const num = document.createElement("span");
+    num.className = "party__num";
+    num.textContent = String(index).padStart(2, "0");
+
+    const name = document.createElement("span");
+    name.className = "party__name";
+    name.textContent = character.name;
+
+    const build = document.createElement("span");
+    build.className = "party__build";
+    build.textContent = character.species.name + " " + character.cls.name;
+
+    row.appendChild(num);
+    row.appendChild(name);
+    row.appendChild(build);
+
+    if (index > 1) {
+      const pull = document.createElement("button");
+      pull.className = "party__pull";
+      pull.type = "button";
+      pull.textContent = "to main";
+      pull.addEventListener("click", () => {
+        // Load the member by its own serial rather than by copying seeds
+        // across, so what lands on the sheet is exactly what that link
+        // rebuilds. The party ends here: this machine is that character
+        // now, on its own.
+        applySerial(parseSerial(serial));
+        status("pulled " + character.name + " to main");
+        commit(true);
+      });
+      row.appendChild(pull);
+    }
+
+    list.appendChild(row);
+  }
+}
+
 function status(message) {
   setText("lcd-status", message);
+}
+
+/* ---------------------------------------------------------
+   MIDI -- five keys, five channels
+
+   Real WebMIDI, which costs nothing to reach: it is a browser API, not a
+   library. Access is asked for only when the reader presses connect, and
+   when there is nothing to talk to the port says so rather than pretending.
+   --------------------------------------------------------- */
+
+const midiState = { connected: false, access: null };
+
+function midiReport(message) {
+  setText("midi-status", message);
+  syncPorts();
+  syncLamps();
+}
+
+function midiDevices(access) {
+  const names = [];
+  access.inputs.forEach((input) => names.push(input.name || "unnamed device"));
+  return names;
+}
+
+function midiListen(access) {
+  access.inputs.forEach((input) => {
+    input.onmidimessage = onMidiMessage;
+  });
+
+  const names = midiDevices(access);
+  midiState.connected = names.length > 0;
+  midiReport(names.length ? "listening — " + names.join(", ") : "no device");
+}
+
+function onMidiMessage(event) {
+  // [command, note, velocity]. A note-on with no velocity is a note-off
+  // by another name, which is why the second test is here.
+  const command = event.data[0] & 0xf0;
+  const note = event.data[1];
+  if (command !== 0x90 || event.data[2] === 0) return;
+
+  const channel = CHANNELS[note % CHANNELS.length];
+  status("midi rolled " + channel);
+  rollChannels([channel], true);
+}
+
+function connectMidi() {
+  if (!navigator.requestMIDIAccess) {
+    midiReport("midi not available in this browser");
+    return;
+  }
+  // file:// is not a secure context, so a clone opened straight off disk
+  // cannot do this. Everything else on the page still can.
+  if (!window.isSecureContext) {
+    midiReport("midi needs https or localhost");
+    return;
+  }
+
+  midiReport("asking…");
+  navigator.requestMIDIAccess().then(
+    (access) => {
+      midiState.access = access;
+      access.onstatechange = () => midiListen(access);
+      midiListen(access);
+    },
+    () => midiReport("midi access refused"),
+  );
 }
 
 function copySheet() {
@@ -2898,6 +3220,146 @@ function wireKnob(group) {
   );
 }
 
+/* ---------------------------------------------------------
+   The port strip
+   --------------------------------------------------------- */
+
+// Kept in step with the transition on .bay by hand: the drawer has to be
+// shut before it is hidden, and there is no way to say that in CSS.
+const BAY_SLIDE_MS = 220;
+
+function openBay(name) {
+  document.querySelectorAll("[data-bay]").forEach((bay) => {
+    if (bay.getAttribute("data-bay") === name) {
+      bay.hidden = false;
+      // Flush the shut state first, or there is nothing to slide from.
+      // Reading a layout property is what forces that, deliberately --
+      // waiting for a frame does not work in a tab nobody is looking at.
+      void bay.offsetHeight;
+      bay.classList.add("is-open");
+      return;
+    }
+
+    if (bay.hidden) return;
+    bay.classList.remove("is-open");
+
+    // Hidden once it has finished closing, so nothing inside stays in the
+    // tab order behind a shut drawer. On a timer rather than transitionend
+    // because that event can simply never arrive -- a backgrounded tab
+    // does not run transitions -- and a drawer stuck half-open in the tab
+    // order is worse than one that closes a frame early.
+    window.setTimeout(
+      () => {
+        if (!bay.classList.contains("is-open")) bay.hidden = true;
+      },
+      prefersReducedMotion ? 0 : BAY_SLIDE_MS,
+    );
+  });
+  document.querySelectorAll("[data-port]").forEach((port) => {
+    const own = port.getAttribute("data-port");
+    if (port.tagName === "BUTTON") {
+      port.setAttribute("aria-expanded", own === name ? "true" : "false");
+    }
+  });
+}
+
+function wirePorts() {
+  document.querySelectorAll("button[data-port]").forEach((port) => {
+    port.addEventListener("click", () => {
+      const name = port.getAttribute("data-port");
+      const open = port.getAttribute("aria-expanded") === "true";
+      openBay(open ? null : name);
+    });
+  });
+}
+
+// A cable is live while you type, so the field commits a beat after the
+// last keystroke rather than on every one.
+let patchTimer = null;
+
+function patchChannel(channel, text) {
+  const dip = document.querySelector('[data-hold="' + channel + '"]');
+
+  if (!text) {
+    // Unplugging releases the hold but leaves the seed alone: pulling a
+    // cable out shouldn't re-roll the character it was feeding.
+    delete state.patched[channel];
+    state.holds[channel] = false;
+    if (dip) dip.checked = false;
+    syncLamps();
+    syncPorts();
+    status(channel + " unpatched");
+    return;
+  }
+
+  // A patched species is a species change as far as a held name is
+  // concerned, exactly as a rolled one would be.
+  pinNameFor([channel]);
+
+  state.seeds[channel] = seedFromText(text);
+  state.patched[channel] = true;
+  state.holds[channel] = true;
+  if (dip) dip.checked = true;
+
+  status(channel + " patched");
+  commit(true);
+}
+
+function wirePatchBay() {
+  document.querySelectorAll("[data-patch]").forEach((field) => {
+    field.addEventListener("input", () => {
+      window.clearTimeout(patchTimer);
+      patchTimer = window.setTimeout(() => {
+        patchChannel(field.getAttribute("data-patch"), field.value.trim());
+      }, 400);
+    });
+  });
+}
+
+// Loading a serial pulls every cable: the text behind a patch is not in
+// the serial, so a patched channel cannot survive a link.
+function clearPatches() {
+  state.patched = {};
+  document.querySelectorAll("[data-patch]").forEach((field) => {
+    field.value = "";
+  });
+}
+
+function wireCartridge() {
+  document.querySelectorAll('[name="cartridge"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      state.cartridge = radio.value;
+      syncKnob("cartridge");
+      setText("cartridge-note", cartridgeFor(state.cartridge).note);
+      status(cartridgeFor(state.cartridge).label);
+      // A cartridge changes what the seeds mean, so this really is a new
+      // character even though nothing was re-rolled.
+      commit(true);
+    });
+  });
+
+  wireKnob("cartridge");
+  syncKnob("cartridge");
+  setText("cartridge-note", cartridgeFor(state.cartridge).note);
+}
+
+function wireParty() {
+  const size = byId("party-size");
+  if (!size) return;
+
+  size.addEventListener("change", () => {
+    const wanted = Math.round(Number(size.value));
+    const clamped = Math.max(1, Math.min(PARTY_MAX, wanted || 1));
+    size.value = String(clamped);
+    state.party = clamped;
+    status(clamped > 1 ? "party of " + clamped : "party released");
+    // The character on the sheet does not change when the party grows --
+    // it is member one either way -- so nothing here is re-rolled.
+    commit(false);
+  });
+}
+
 function wireControls() {
   byId("roll").addEventListener("click", () => {
     const open = CHANNELS.filter((channel) => !state.holds[channel]);
@@ -2961,6 +3423,12 @@ function wireControls() {
   syncKnob("method");
   syncKnob("setting");
 
+  wirePorts();
+  wirePatchBay();
+  wireCartridge();
+  wireParty();
+  byId("midi-connect").addEventListener("click", connectMidi);
+
   byId("copy").addEventListener("click", copySheet);
   byId("export").addEventListener("click", exportSheet);
 
@@ -2980,11 +3448,20 @@ function applySerial(parsed) {
   state.seeds = parsed.seeds;
   state.method = parsed.method;
   state.setting = parsed.setting;
+  state.cartridge = parsed.cartridge;
+  state.party = parsed.party;
   state.nameSpecies = parsed.nameSpecies;
+
+  clearPatches();
+
+  const size = byId("party-size");
+  if (size) size.value = String(state.party);
+  setText("cartridge-note", cartridgeFor(state.cartridge).note);
 
   [
     ["method", state.method],
     ["setting", state.setting],
+    ["cartridge", state.cartridge],
   ].forEach((pair) => {
     const radio = document.querySelector(
       '[name="' + pair[0] + '"][value="' + pair[1] + '"]',

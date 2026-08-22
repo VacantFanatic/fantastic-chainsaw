@@ -365,6 +365,74 @@ Deliberate choices worth remembering:
   no-dependency rule and redistributes something that isn't SRD. Layout
   and content are separate: `sheetSections` knows D&D and no points,
   `pdfRow` knows points and no D&D.
+- **The machine has a port strip.** Every box this thing is modelled on
+  has jacks along its top edge, and that strip is the part that says the
+  machine isn't the whole story. There are four, each opening a drawer
+  that slides out from under the strip: INPUT, SYNC, AUX, MIDI. OUTPUT is
+  a plain chip, because copy and export are already real keys on the deck
+  and a port that isn't a destination shouldn't pretend to be a control.
+  A chip lights when something is actually plugged into it, not merely
+  when its drawer is open.
+- **INPUT patches text into a channel, and costs the serial nothing.** A
+  patched channel is a seed minted from a hash of your text instead of
+  from `Math.random`, and `mintSeed` now mints all three kinds -- rolled,
+  patched, derived -- so nothing downstream can tell them apart. The text
+  itself goes nowhere: not to the serial, not to the address bar, not to
+  storage. What survives is the four characters it hashed to, which is
+  the only thing a link ever carried anyway. Patching engages the
+  channel's hold, because a live input shouldn't be overwritten by the
+  next roll; unplugging releases the hold and leaves the seed alone.
+- **A patched species is a species change.** The name pin added earlier
+  lived inside `rollChannels`, but rolling is no longer the only way a
+  channel moves. That logic is now `pinNameFor`, called by both paths, or
+  a patched species would quietly rename a held name -- exactly the bug
+  the pin was built to stop.
+- **SYNC: one serial, a whole party.** `P<n>` on the end of the serial,
+  2 to 6. Member one is the machine itself; the rest derive from the
+  serial it would have on its own, so the party group can't feed its own
+  derivation. Every member also spells a serial of its own, which is what
+  the pull button loads -- so one link rebuilds the set, and each member
+  is still a first-class character with a link of their own.
+- **AUX cartridges clamp what can be rolled.** `CARTRIDGES` is a table
+  like `SETTINGS`: casters only, no magic, no humans, small folk,
+  frontline. A cartridge changes what a seed produces, so unlike the
+  setting knob it genuinely has to be in the serial (`X<index>`) or an
+  old link would rebuild a different character. The selector is the
+  existing knob -- `wireKnob` was already written for N positions, so a
+  third switch needed no new knob code. A filter that emptied a list
+  would break the machine, so an empty result falls back to the full one.
+- **The serial grew a tail parser.** Three optional groups was one too
+  many to pop by hand. `SERIAL_TAIL` is a table keyed by letter -- `P`
+  party, `X` cartridge, `N` name pin -- read off the end in any order and
+  written in a fixed one, so a given state always spells the same serial.
+  A seed is always four characters and a tail group is at most three, so
+  they can never be confused. Out of range, repeated, or unknown groups
+  are refused rather than ignored. Serials minted before any of this
+  still parse as the shorter thing they are, which was checked.
+- **MIDI is real, and honest when it isn't there.** `requestMIDIAccess`
+  is a browser API, not a library, so it costs the no-dependency rule
+  nothing. Notes map `note % 5` onto the five channels. Access is asked
+  for only when the reader presses connect -- a permission prompt on page
+  load would be rude -- and the port reports `no device`, `not available
+in this browser`, or `needs https or localhost` rather than failing
+  silently. **This is the one thing on the page that a clone opened
+  straight off disk cannot do**: `file://` is not a secure context.
+  Everything else still works exactly as it did.
+- **The drawer slides on a timer, not on `transitionend`.** `0fr` to
+  `1fr` is the only way to animate to a height nobody measured, and the
+  `hidden` attribute is still what closes a drawer, so nothing inside a
+  shut one stays in the tab order. Re-hiding waits out `BAY_SLIDE_MS`
+  rather than listening for the transition, because that event can simply
+  never arrive -- a backgrounded tab runs no transitions -- and a drawer
+  stuck half-open in the tab order is worse than one that shuts a frame
+  early. `prefers-reduced-motion` skips the wait entirely.
+- **One new colour pair, measured.** The drawers put `--ink-soft` on a
+  surface it had never landed on: on `--panel-sunk` it is 4.15:1 in the
+  Realms skin and fails. The whole drawer is `--card` instead, where the
+  worst skin is 5.94:1, and fields are told apart by their border rather
+  than a second background -- which the hairline was doing everywhere
+  else on this panel anyway. All 22 text nodes across the four drawers
+  were measured in all five skins.
 
 Open items:
 
