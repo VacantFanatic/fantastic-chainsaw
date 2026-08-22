@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>a slow drift — STATIC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
       rel="stylesheet"
@@ -13,6 +15,8 @@
       body.page-starfield {
         overflow: hidden;
         height: 100vh;
+        /* dvh so the bottom bar isn't hidden under mobile browser chrome */
+        height: 100dvh;
         background: var(--phosphor-bg);
         color: var(--phosphor-fg);
       }
@@ -54,20 +58,136 @@
       #stars {
         position: absolute;
         inset: 0;
+        /* An absolutely positioned *replaced* element with width:auto
+           resolves to its intrinsic size, which for a canvas is the
+           width/height attributes — i.e. device pixels. Without these two
+           the element renders dpr-times too wide on HiDPI screens. */
+        width: 100%;
+        height: 100%;
         z-index: 1;
       }
 
-      .piece-hint {
+      /* ---------------------------------------------------------
+         Bottom bar: the distortion panel, and the hint
+         --------------------------------------------------------- */
+      .piece-foot {
         position: absolute;
-        bottom: 1.5rem;
         left: 0;
         right: 0;
-        text-align: center;
+        bottom: 1.5rem;
         z-index: 2;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 1rem 2rem;
+        padding: 0 2rem;
+        flex-wrap: wrap-reverse;
+      }
+
+      .piece-hint {
         font-family: var(--mono);
         font-size: 0.7rem;
         color: var(--phosphor-dim);
+        margin: 0;
         pointer-events: none;
+      }
+
+      .controls {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        border: 1px solid var(--phosphor-line);
+        border-radius: 2px;
+        background: color-mix(in srgb, var(--phosphor-bg) 88%, transparent);
+        max-width: 100%;
+      }
+
+      .controls__summary {
+        cursor: pointer;
+        padding: 0.45rem 0.7rem;
+        color: var(--phosphor-fg);
+        letter-spacing: 0.06em;
+        list-style: none;
+      }
+
+      /* Swap the default disclosure marker for a phosphor-flavored one. */
+      .controls__summary::-webkit-details-marker {
+        display: none;
+      }
+
+      .controls__summary::before {
+        content: "[+] ";
+      }
+
+      .controls[open] .controls__summary::before {
+        content: "[-] ";
+      }
+
+      .controls__summary:focus-visible,
+      .controls input:focus-visible,
+      .controls button:focus-visible {
+        outline: 2px solid var(--phosphor-fg);
+        outline-offset: 2px;
+      }
+
+      .controls__body {
+        padding: 0.2rem 0.7rem 0.7rem;
+        border-top: 1px solid var(--phosphor-line);
+        display: grid;
+        gap: 0.35rem;
+      }
+
+      .controls__row {
+        display: grid;
+        grid-template-columns: 5.5rem 8.5rem 3.5rem;
+        align-items: center;
+        gap: 0.6rem;
+        margin: 0;
+      }
+
+      .controls__row label {
+        color: var(--phosphor-dim);
+      }
+
+      .controls__val {
+        color: var(--phosphor-fg);
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .controls input[type="range"] {
+        width: 100%;
+        /* Native slider, themed. Keeps the built-in keyboard behavior. */
+        accent-color: var(--phosphor-fg);
+        cursor: pointer;
+      }
+
+      .controls__reset {
+        justify-self: start;
+        margin-top: 0.35rem;
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        background: transparent;
+        border: 1px solid var(--phosphor-line);
+        color: var(--phosphor-fg);
+        padding: 0.3rem 0.6rem;
+        border-radius: 2px;
+        cursor: pointer;
+      }
+
+      .controls__reset:hover {
+        border-color: var(--phosphor-fg);
+      }
+
+      @media (max-width: 40rem) {
+        .piece-head,
+        .piece-foot {
+          padding-left: 1.25rem;
+          padding-right: 1.25rem;
+        }
+
+        .controls__row {
+          grid-template-columns: 4.5rem 1fr 3.5rem;
+        }
       }
     </style>
   </head>
@@ -79,7 +199,102 @@
       <a href="../index.html">&larr; back to index</a>
     </header>
 
-    <p class="piece-hint">move your cursor. the field remembers, briefly.</p>
+    <footer class="piece-foot">
+      <details class="controls" open>
+        <summary class="controls__summary">distortion</summary>
+        <div class="controls__body">
+          <p class="controls__row">
+            <label for="c-count">stars</label>
+            <input
+              id="c-count"
+              type="range"
+              data-param="count"
+              min="0"
+              max="600"
+              step="10"
+            />
+            <span class="controls__val" data-readout="count" aria-hidden="true"
+              >160</span
+            >
+          </p>
+
+          <p class="controls__row">
+            <label for="c-pull-radius">reach</label>
+            <input
+              id="c-pull-radius"
+              type="range"
+              data-param="pullRadius"
+              min="0"
+              max="500"
+              step="10"
+            />
+            <span
+              class="controls__val"
+              data-readout="pullRadius"
+              aria-hidden="true"
+              >160px</span
+            >
+          </p>
+
+          <p class="controls__row">
+            <label for="c-pull-strength">pull</label>
+            <input
+              id="c-pull-strength"
+              type="range"
+              data-param="pullStrength"
+              min="0"
+              max="80"
+              step="1"
+            />
+            <span
+              class="controls__val"
+              data-readout="pullStrength"
+              aria-hidden="true"
+              >14px</span
+            >
+          </p>
+
+          <p class="controls__row">
+            <label for="c-drift">drift</label>
+            <input
+              id="c-drift"
+              type="range"
+              data-param="drift"
+              min="0"
+              max="60"
+              step="1"
+            />
+            <span class="controls__val" data-readout="drift" aria-hidden="true"
+              >8px</span
+            >
+          </p>
+
+          <p class="controls__row">
+            <label for="c-twinkle">twinkle</label>
+            <input
+              id="c-twinkle"
+              type="range"
+              data-param="twinkle"
+              min="0"
+              max="0.15"
+              step="0.005"
+            />
+            <span
+              class="controls__val"
+              data-readout="twinkle"
+              aria-hidden="true"
+              >0.030</span
+            >
+          </p>
+
+          <button id="controls-reset" class="controls__reset" type="button">
+            reset
+          </button>
+        </div>
+      </details>
+
+      <p class="piece-hint">move your cursor. the field remembers, briefly.</p>
+    </footer>
 
     <script src="starfield.js"></script>
   </body>
