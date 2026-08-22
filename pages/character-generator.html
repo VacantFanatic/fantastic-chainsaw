@@ -54,11 +54,18 @@
     </section>
 
     <section class="unit" id="unit" aria-labelledby="unit-title">
-      <!-- The top edge of the machine. OUTPUT is a plain chip because copy
-           and export are already real keys on the deck, and a port that
-           isn't a destination shouldn't pretend to be a control. -->
+      <!-- The top edge of the machine. Every chip here is a real port
+           with something behind it; OUTPUT is where the sheet leaves. -->
       <div class="unit__ports">
-        <span class="port port--dead" aria-hidden="true">output</span>
+        <button
+          class="port"
+          type="button"
+          data-port="output"
+          aria-expanded="false"
+          aria-controls="bay-output"
+        >
+          output
+        </button>
         <button
           class="port"
           type="button"
@@ -98,6 +105,34 @@
       </div>
 
       <div class="bays">
+        <section class="bay" id="bay-output" data-bay="output" hidden>
+          <div class="bay__inner">
+            <div class="bay__panel">
+              <h3 class="bay__title">output &mdash; take the sheet with you</h3>
+              <div class="key-row">
+                <button class="key key--wide" id="copy" type="button">
+                  <span class="key__legend">copy</span>
+                  <span class="key__sub">plain text</span>
+                </button>
+                <button class="key key--wide" id="export-pdf" type="button">
+                  <span class="key__legend">pdf</span>
+                  <span class="key__sub">a sheet to print</span>
+                </button>
+                <button class="key key--wide" id="export-json" type="button">
+                  <span class="key__legend">json</span>
+                  <span class="key__sub">the sheet as data</span>
+                </button>
+              </div>
+              <p class="bay__note">
+                plain text is for pasting into a chat window. the pdf is written
+                here rather than filled in, so it is this machine&rsquo;s sheet
+                and not the official form. the json is every number on the
+                sheet, for anything that would rather read it than look at it.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section class="bay" id="bay-input" data-bay="input" hidden>
           <div class="bay__inner">
             <div class="bay__panel">
@@ -178,16 +213,26 @@
                 and each one still has a serial of its own.
               </p>
               <div class="bay__body">
-                <label class="bay__field">
+                <label class="bay__field bay__field--fader">
                   <span>size</span>
                   <input
-                    type="number"
+                    type="range"
                     id="party-size"
                     min="1"
                     max="6"
                     step="1"
                     value="1"
+                    list="party-ticks"
                   />
+                  <datalist id="party-ticks">
+                    <option value="1"></option>
+                    <option value="2"></option>
+                    <option value="3"></option>
+                    <option value="4"></option>
+                    <option value="5"></option>
+                    <option value="6"></option>
+                  </datalist>
+                  <output id="party-readout" for="party-size">solo</output>
                 </label>
                 <ol class="party" id="party"></ol>
               </div>
@@ -262,6 +307,18 @@
 
       <div class="unit__head">
         <h2 class="unit__title" id="unit-title">generator</h2>
+        <label class="fader">
+          <span class="fader__label">glow</span>
+          <input
+            type="range"
+            id="glow"
+            min="0"
+            max="100"
+            step="1"
+            value="50"
+            aria-label="display glow"
+          />
+        </label>
         <span class="unit__badge" aria-hidden="true">cg&ndash;20</span>
       </div>
 
@@ -279,12 +336,37 @@
           </div>
           <p class="lcd__foot">
             <span id="serial-lcd">&mdash;</span>
+            <span id="lcd-take">tk 1/1</span>
             <span id="lcd-status">ready</span>
           </p>
         </div>
         <!-- A readout of the deck below, not a control: every lamp here has
              a real switch under it, and the whole display is aria-hidden. -->
         <div class="lcd__lamps">
+          <!-- The operator. Every pocket operator's LCD keeps a little
+               figure who works the machine; ours rattles a die when the
+               panel is busy and otherwise just stands there. Two frames,
+               stepped by CSS -- reduced motion holds frame one. -->
+          <svg class="mascot" viewBox="0 0 24 24">
+            <g class="mascot__frame mascot__frame--a">
+              <rect x="9" y="2" width="6" height="6" />
+              <rect x="8" y="9" width="8" height="7" />
+              <rect x="5" y="10" width="2" height="4" />
+              <rect x="17" y="10" width="2" height="4" />
+              <rect x="9" y="17" width="2" height="5" />
+              <rect x="13" y="17" width="2" height="5" />
+              <rect x="18" y="6" width="4" height="4" class="mascot__die" />
+            </g>
+            <g class="mascot__frame mascot__frame--b">
+              <rect x="9" y="3" width="6" height="6" />
+              <rect x="8" y="10" width="8" height="6" />
+              <rect x="5" y="7" width="2" height="4" />
+              <rect x="17" y="7" width="2" height="4" />
+              <rect x="9" y="17" width="2" height="5" />
+              <rect x="13" y="17" width="2" height="5" />
+              <rect x="18" y="2" width="4" height="4" class="mascot__die" />
+            </g>
+          </svg>
           <p class="lamps__head">ports</p>
           <ul class="lamps">
             <li class="lamp" data-lamp="input">
@@ -359,6 +441,12 @@
                 <path d="M2.5 6.5h11M2.5 9.5h11" /></svg
               >array
             </li>
+            <li class="lamp" data-lamp="method-gritty">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+                <circle class="lamp__pip" cx="8" cy="8" r="1" /></svg
+              >3d6
+            </li>
             <li class="lamp" data-lamp="method-dice">
               <svg class="lamp__icon" viewBox="0 0 16 16">
                 <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
@@ -366,6 +454,25 @@
                 <circle class="lamp__pip" cx="8" cy="8" r="1" />
                 <circle class="lamp__pip" cx="10.4" cy="10.4" r="1" /></svg
               >4d6
+            </li>
+            <li class="lamp" data-lamp="method-heroic">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+                <circle class="lamp__pip" cx="5.4" cy="5.4" r="1" />
+                <circle class="lamp__pip" cx="10.6" cy="5.4" r="1" />
+                <circle class="lamp__pip" cx="5.4" cy="10.6" r="1" />
+                <circle class="lamp__pip" cx="10.6" cy="10.6" r="1" /></svg
+              >heroic
+            </li>
+          </ul>
+
+          <p class="lamps__head">flourish</p>
+          <ul class="lamps">
+            <li class="lamp" data-lamp="flourish">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <path d="M3 12c2-6 8-6 10-8-1 4-1 8-7 9" />
+                <path d="M3 13c2-2 4-3 6-3.5" /></svg
+              ><span id="lamp-flourish">weathered</span>
             </li>
           </ul>
 
@@ -384,10 +491,89 @@
       </div>
 
       <div class="unit__deck">
-        <button class="key key--master" id="roll" type="button">
-          <span class="key__legend">roll</span>
-          <span class="key__sub">all open channels</span>
-        </button>
+        <div class="deck__left">
+          <button class="key key--master" id="roll" type="button">
+            <span class="key__legend">roll</span>
+            <span class="key__sub">all open channels</span>
+          </button>
+
+          <!-- Pocket-operator row: round momentary keys with the label
+               under the cap, not on it. -->
+          <div class="transport">
+            <div class="tkey">
+              <button
+                class="key key--round"
+                id="audition"
+                type="button"
+                aria-pressed="false"
+                aria-label="audition — hold to preview a roll, press roll to keep it"
+              >
+                <span aria-hidden="true">&#9673;</span>
+              </button>
+              <span class="tkey__label">audit.</span>
+            </div>
+            <div class="tkey">
+              <button
+                class="key key--round"
+                id="take-back"
+                type="button"
+                aria-label="previous take"
+              >
+                <span aria-hidden="true">&minus;</span>
+              </button>
+              <span class="tkey__label">take</span>
+            </div>
+            <div class="tkey">
+              <button
+                class="key key--round"
+                id="take-forward"
+                type="button"
+                aria-label="next take"
+              >
+                <span aria-hidden="true">+</span>
+              </button>
+              <span class="tkey__label">take</span>
+            </div>
+            <div class="tkey">
+              <button
+                class="key key--round key--play"
+                id="play"
+                type="button"
+                aria-pressed="false"
+              >
+                <span class="key__legend" aria-hidden="true">&#9654;</span>
+                <span class="key__sub sr-only">roll on a clock</span>
+              </button>
+              <span class="tkey__label">play</span>
+            </div>
+          </div>
+
+          <fieldset class="mode mode--tempo">
+            <legend>tempo</legend>
+            <div class="mode__body">
+              <div class="knob" data-knob="tempo" aria-hidden="true">
+                <span class="knob__ticks" data-knob-ticks></span>
+                <span class="knob__dial" data-knob-dial>
+                  <span class="knob__pointer"></span>
+                </span>
+              </div>
+              <div class="mode__opts">
+                <label class="mode__opt">
+                  <input type="radio" name="tempo" value="slow" />
+                  <span>slow</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="tempo" value="medium" checked />
+                  <span>medium</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="tempo" value="fast" />
+                  <span>fast</span>
+                </label>
+              </div>
+            </div>
+          </fieldset>
+        </div>
 
         <div class="channels">
           <div class="channel">
@@ -517,8 +703,16 @@
                   <span>standard array</span>
                 </label>
                 <label class="mode__opt">
+                  <input type="radio" name="method" value="gritty" />
+                  <span>3d6 &mdash; gritty</span>
+                </label>
+                <label class="mode__opt">
                   <input type="radio" name="method" value="dice" />
                   <span>4d6, drop lowest</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="method" value="heroic" />
+                  <span>reroll 1s &mdash; heroic</span>
                 </label>
               </div>
             </div>
@@ -564,16 +758,43 @@
             </p>
           </fieldset>
 
-          <div class="key-pair">
-            <button class="key key--wide" id="copy" type="button">
-              <span class="key__legend">copy</span>
-              <span class="key__sub">plain text</span>
-            </button>
-            <button class="key key--wide" id="export" type="button">
-              <span class="key__legend">export</span>
-              <span class="key__sub">sheet as PDF</span>
-            </button>
-          </div>
+          <fieldset class="mode">
+            <legend>flourish</legend>
+
+            <div class="mode__body">
+              <div class="knob" data-knob="flourish" aria-hidden="true">
+                <span class="knob__ticks" data-knob-ticks></span>
+                <span class="knob__dial" data-knob-dial>
+                  <span class="knob__pointer"></span>
+                </span>
+              </div>
+
+              <div class="mode__opts">
+                <label class="mode__opt">
+                  <input type="radio" name="flourish" value="plain" />
+                  <span>plain</span>
+                </label>
+                <label class="mode__opt">
+                  <input
+                    type="radio"
+                    name="flourish"
+                    value="weathered"
+                    checked
+                  />
+                  <span>weathered</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="flourish" value="baroque" />
+                  <span>baroque</span>
+                </label>
+              </div>
+            </div>
+            <p class="mode__note">
+              how ornamented a name may be &mdash; from &ldquo;Vorrun
+              Hillreach&rdquo; to &ldquo;Vorrun Hillreach, the
+              Twice-Buried&rdquo;.
+            </p>
+          </fieldset>
         </div>
       </div>
 

@@ -367,12 +367,19 @@ Deliberate choices worth remembering:
   `pdfRow` knows points and no D&D.
 - **The machine has a port strip.** Every box this thing is modelled on
   has jacks along its top edge, and that strip is the part that says the
-  machine isn't the whole story. There are four, each opening a drawer
-  that slides out from under the strip: INPUT, SYNC, AUX, MIDI. OUTPUT is
-  a plain chip, because copy and export are already real keys on the deck
-  and a port that isn't a destination shouldn't pretend to be a control.
+  machine isn't the whole story. There are five, each opening a drawer
+  that slides out from under the strip: OUTPUT, INPUT, SYNC, AUX, MIDI.
   A chip lights when something is actually plugged into it, not merely
   when its drawer is open.
+- **OUTPUT is where the sheet leaves.** The copy and export keys moved
+  off the deck into its drawer, and a third key joined them: **json**.
+  The JSON is deliberately the _sheet_ as data -- every number a consumer
+  would want (saves, all eighteen skill modifiers, passives, attacks,
+  spellcasting or null) -- and not a dump of the generator's tables. A
+  species in it is a name and a size, not the whole SRD entry; anything
+  that wants to rebuild the machine should use the serial, which is in
+  the file along with the CC BY attribution. All three exports share one
+  `downloadFile`/`exportName` pair and name files `<slug>-<serial>.<ext>`.
 - **INPUT patches text into a channel, and costs the serial nothing.** A
   patched channel is a seed minted from a hash of your text instead of
   from `Math.random`, and `mintSeed` now mints all three kinds -- rolled,
@@ -433,6 +440,47 @@ in this browser`, or `needs https or localhost` rather than failing
   than a second background -- which the hairline was doing everywhere
   else on this panel anyway. All 22 text nodes across the four drawers
   were measured in all five skins.
+- **The tactile pass.** Six controls, one design rule: knobs for
+  choices, sliders for amounts, momentary keys for gestures, latching
+  keys for states -- and anything that changes what comes out of the
+  machine rides in the serial, while performance and feel controls
+  deliberately do not.
+  - **The scores knob has four detents now** -- standard array, 3d6
+    gritty, 4d6 drop lowest, and heroic (4d6, each 1 rerolled once).
+    The serial's method letter grew A/R -> A/G/R/H; old serials parse
+    unchanged. Different methods draw different dice counts from the
+    stream, which is fine because the method is in the serial.
+  - **A flourish knob sets how ornamented a name may be** -- plain,
+    weathered, baroque (epithet chance 0 / 0.28 / 0.6). Weathered is the
+    old hard-coded value and the default, so pre-knob serials spell the
+    same names. Off-default rides as a trailing `F<index>` group.
+  - **The machine keeps takes.** Sixteen serials in memory, nowhere
+    else; the take keys step back and forth, and a new roll after
+    stepping back records over the tape. A serial arriving by hash
+    starts a fresh reel. The LCD foot shows `tk n/m`.
+  - **Audition is a momentary key** -- hold to preview a phantom roll on
+    the display only (sheet, serial and address bar stay put), release
+    to discard, press roll (or r) while holding to keep. The r-shortcut
+    guard makes an exception for the held audition key on purpose.
+  - **A transport plays the machine** -- latching play, three-detent
+    tempo. Every tick rolls the open channels through the same path a
+    hand-roll takes, so each one is a real serial on the take reel. Any
+    manual roll stops the reel. Reduced motion disables the key and says
+    so on it.
+  - **Two faders** -- glow (scanline opacity against display brightness,
+    deliberately stateless: a reload is a power cycle) and the party
+    size, which stopped being a number input. One shared fader style:
+    rectangular caps, because circles are for knobs.
+  - **The display gained an operator.** Every pocket operator's LCD
+    keeps a little figure who works the machine; ours rattles a die in
+    the bright phosphor while the panel is busy, two frames on steps().
+    Reduced motion never starts the flip, so frame one just stands
+    there, which still reads as intended.
+  - One bug caught in verification: `applySerial` restored every tail
+    field except the new flourish, so a baroque link rebuilt a weathered
+    character. The radios were synced from state, which hid it -- the
+    fix is one line, and the lesson is the same as the name pin's:
+    every field the serial carries must round-trip through applySerial.
 
 Open items:
 
