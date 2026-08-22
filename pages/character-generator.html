@@ -197,9 +197,8 @@
               <!-- Decorative. The radios below are the real control: they stay
                    focusable and keyboard-navigable, and the knob is a pointer
                    affordance layered over them. -->
-              <div class="knob" data-knob aria-hidden="true">
-                <span class="knob__tick knob__tick--a"></span>
-                <span class="knob__tick knob__tick--b"></span>
+              <div class="knob" data-knob="method" aria-hidden="true">
+                <span class="knob__ticks" data-knob-ticks></span>
                 <span class="knob__dial" data-knob-dial>
                   <span class="knob__pointer"></span>
                 </span>
@@ -216,6 +215,46 @@
                 </label>
               </div>
             </div>
+          </fieldset>
+
+          <fieldset class="mode">
+            <legend>setting</legend>
+
+            <div class="mode__body">
+              <div class="knob" data-knob="setting" aria-hidden="true">
+                <span class="knob__ticks" data-knob-ticks></span>
+                <span class="knob__dial" data-knob-dial>
+                  <span class="knob__pointer"></span>
+                </span>
+              </div>
+
+              <div class="mode__opts">
+                <label class="mode__opt">
+                  <input type="radio" name="setting" value="generic" checked />
+                  <span>generic</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="setting" value="forgotten-realms" />
+                  <span>forgotten realms</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="setting" value="greyhawk" />
+                  <span>greyhawk</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="setting" value="dark-sun" />
+                  <span>dark sun</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="setting" value="dragonlance" />
+                  <span>dragonlance</span>
+                </label>
+              </div>
+            </div>
+            <p class="mode__note">
+              changes the panel only &mdash; species, bonuses and spell lists
+              are still generic for every setting.
+            </p>
           </fieldset>
 
           <button class="key key--wide" id="copy" type="button">

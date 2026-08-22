@@ -287,6 +287,26 @@ Deliberate choices worth remembering:
   scores either way.
 - **Print styles.** Printing hides the panel and prints the sheet in two
   columns, because a character sheet you can't print is a bit of a joke.
+- **A second knob picks the campaign setting.** Generic, Forgotten
+  Realms, Greyhawk, Dark Sun, Dragonlance. Right now it **only re-skins
+  the panel** -- nothing in `SETTINGS` reaches `buildCharacter`, so every
+  setting still rolls a generic SRD character, and the fieldset says so
+  in as many words. When it does start filtering species and adjusting
+  bonuses, `SETTINGS` is where that data hangs.
+- **One knob implementation, two knobs.** A knob is
+  `[data-knob="<group>"]` driving the radios named `<group>`, so the same
+  code runs the 2-position ability-score switch and the 5-position
+  setting switch. The detent marks are drawn by `drawKnobTicks` from the
+  same angle maths that turns the dial, rather than written out in CSS,
+  so a knob cannot drift out of step with its own ticks.
+- **Generic adds nothing to the serial.** The setting letter is appended
+  only when it isn't generic, so every serial minted before settings
+  existed is still byte-identical and still rebuilds the same character.
+  An unknown setting letter is refused rather than silently ignored.
+- **Every palette was computed, not eyeballed.** Four of the five needed
+  their signal colour darkened to clear 4.5:1 -- Dark Sun's orange failed
+  at 3.60 on the panel before it was solved for. Generic is the base
+  `:root` palette and isn't repeated.
 - **Pasted serials work in an open tab.** A `hashchange` listener rebuilds
   the character, so the piece's central claim -- that the link rebuilds
   this exact character -- holds whether you open the link fresh or paste

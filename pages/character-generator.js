@@ -1243,6 +1243,25 @@ const EPITHETS = [
    Seeded randomness
    --------------------------------------------------------- */
 
+// Campaign settings. For now this only re-skins the panel: nothing here
+// reaches buildCharacter, so every setting still rolls a generic SRD
+// character. When it does start filtering species and adjusting bonuses,
+// this is where that data hangs.
+//
+// The code letter is what goes in the serial. Generic is deliberately
+// letterless -- see serialOf.
+const SETTINGS = [
+  { id: "generic", code: "G", label: "generic" },
+  { id: "forgotten-realms", code: "F", label: "forgotten realms" },
+  { id: "greyhawk", code: "H", label: "greyhawk" },
+  { id: "dark-sun", code: "D", label: "dark sun" },
+  { id: "dragonlance", code: "L", label: "dragonlance" },
+];
+
+function settingFor(id) {
+  return SETTINGS.find((entry) => entry.id === id) || SETTINGS[0];
+}
+
 const CHANNELS = ["name", "species", "class", "background", "stats"];
 const SEED_LENGTH = 4;
 
@@ -1925,6 +1944,7 @@ const state = {
   seeds: {},
   holds: {},
   method: "array",
+  setting: "generic",
 };
 
 CHANNELS.forEach((channel) => {
@@ -1935,12 +1955,28 @@ CHANNELS.forEach((channel) => {
 function serialOf(current) {
   const groups = CHANNELS.map((channel) => current.seeds[channel]);
   groups.push(current.method === "array" ? "A" : "R");
+  // Generic adds no group. That keeps every serial minted before settings
+  // existed byte-identical, so old links are not quietly invalidated.
+  const setting = settingFor(current.setting);
+  if (setting.id !== SETTINGS[0].id) groups.push(setting.code);
   return groups.join("-");
 }
 
 function parseSerial(text) {
   const groups = text.replace(/^#/, "").toUpperCase().split("-");
-  if (groups.length !== CHANNELS.length + 1) return null;
+  // 5 seeds + method, and optionally a setting after it.
+  const withMethod = CHANNELS.length + 1;
+  if (groups.length !== withMethod && groups.length !== withMethod + 1) {
+    return null;
+  }
+
+  let setting = SETTINGS[0].id;
+  if (groups.length === withMethod + 1) {
+    const code = groups.pop();
+    const match = SETTINGS.find((entry) => entry.code === code);
+    if (!match) return null;
+    setting = match.id;
+  }
 
   const methodGroup = groups.pop();
   if (methodGroup !== "A" && methodGroup !== "R") return null;
@@ -1950,7 +1986,18 @@ function parseSerial(text) {
   CHANNELS.forEach((channel, index) => {
     seeds[channel] = groups[index];
   });
-  return { seeds: seeds, method: methodGroup === "A" ? "array" : "dice" };
+  return {
+    seeds: seeds,
+    method: methodGroup === "A" ? "array" : "dice",
+    setting: setting,
+  };
+}
+
+// The panel's skin is a data attribute; the palettes live in the stylesheet
+// so each setting stays a block of tokens rather than logic in here.
+function applySetting() {
+  const page = document.querySelector(".page-forge");
+  if (page) page.setAttribute("data-setting", settingFor(state.setting).id);
 }
 
 const prefersReducedMotion = window.matchMedia(
@@ -2032,25 +2079,30 @@ function copySheet() {
 }
 
 /* ---------------------------------------------------------
-   The ability-score knob
+   Knobs
 
-   A rotary switch over the method radios. The radios stay the real
-   control -- they hold the value, take focus, and answer to the arrow
-   keys -- and the dial is turned to match. Everything here is a second
-   way to drive them, never the only way.
+   Rotary switches over radio groups. The radios stay the real control --
+   they hold the value, take focus, and answer to the arrow keys -- and
+   the dial is turned to match. Everything here is a second way to drive
+   them, never the only way.
+
+   A knob is [data-knob="<group>"] driving the radios named <group>, so
+   the same code runs the 2-position ability-score switch and the
+   5-position setting switch.
    --------------------------------------------------------- */
 
 // How far the dial swings from centre, in degrees. The detents are spread
-// evenly across it, so adding a third method needs no change here.
+// evenly across it, so a knob's position count is the only thing that
+// changes between one switch and the next.
 const KNOB_SPREAD = 38;
 
 // A drag shorter than this is treated as a click on the knob, which steps
 // to the next position the way a real rotary switch does.
 const KNOB_DRAG_SLOP = 4;
 
-function methodRadios() {
+function knobRadios(group) {
   return Array.prototype.slice.call(
-    document.querySelectorAll('[name="method"]'),
+    document.querySelectorAll('[name="' + group + '"]'),
   );
 }
 
@@ -2059,10 +2111,30 @@ function knobAngle(index, count) {
   return -KNOB_SPREAD + (index / (count - 1)) * KNOB_SPREAD * 2;
 }
 
-function syncKnob() {
-  const knob = document.querySelector("[data-knob]");
+function currentKnobIndex(group) {
+  return knobRadios(group).findIndex((radio) => radio.checked);
+}
+
+// The detent marks are drawn from the same angle maths as the dial, rather
+// than written out in CSS, so a knob with a different number of positions
+// cannot drift out of step with its own ticks.
+function drawKnobTicks(knob, group) {
+  const holder = knob.querySelector("[data-knob-ticks]");
+  if (!holder) return;
+  const count = knobRadios(group).length;
+  holder.textContent = "";
+  for (let i = 0; i < count; i += 1) {
+    const tick = document.createElement("span");
+    tick.className = "knob__tick";
+    tick.style.transform = "rotate(" + knobAngle(i, count) + "deg)";
+    holder.appendChild(tick);
+  }
+}
+
+function syncKnob(group) {
+  const knob = document.querySelector('[data-knob="' + group + '"]');
   if (!knob) return;
-  const radios = methodRadios();
+  const radios = knobRadios(group);
   const index = radios.findIndex((radio) => radio.checked);
   if (index === -1) return;
 
@@ -2071,21 +2143,24 @@ function syncKnob() {
     dial.style.transform = "rotate(" + knobAngle(index, radios.length) + "deg)";
   }
   knob.setAttribute("data-position", String(index));
+
+  // The live position reads in the signal colour, so the knob says what it
+  // is set to without relying on the pointer angle alone.
+  const ticks = knob.querySelectorAll(".knob__tick");
+  ticks.forEach((tick, i) => {
+    tick.classList.toggle("is-on", i === index);
+  });
 }
 
-// Select by index and let the existing radio handler do the rest, so the
-// knob and the keyboard end up on exactly one code path.
-function setMethodIndex(index) {
-  const radios = methodRadios();
+// Select by index and let the group's own change handler do the rest, so
+// the knob and the keyboard end up on exactly one code path.
+function setKnobIndex(group, index) {
+  const radios = knobRadios(group);
   const clamped = Math.max(0, Math.min(radios.length - 1, index));
   const radio = radios[clamped];
   if (!radio || radio.checked) return;
   radio.checked = true;
   radio.dispatchEvent(new Event("change", { bubbles: true }));
-}
-
-function currentMethodIndex() {
-  return methodRadios().findIndex((radio) => radio.checked);
 }
 
 // Pointer angle measured from the knob's centre: 0 at the top, positive
@@ -2110,9 +2185,11 @@ function nearestDetent(angle, count) {
   return best;
 }
 
-function wireKnob() {
-  const knob = document.querySelector("[data-knob]");
+function wireKnob(group) {
+  const knob = document.querySelector('[data-knob="' + group + '"]');
   if (!knob) return;
+
+  drawKnobTicks(knob, group);
 
   let dragging = false;
   let moved = false;
@@ -2140,16 +2217,16 @@ function wireKnob() {
 
   knob.addEventListener("pointermove", (event) => {
     if (!dragging) return;
-    const count = methodRadios().length;
+    const count = knobRadios(group).length;
     const angle = pointerAngle(knob, event);
     // Ignore the first few degrees so a plain click doesn't register as a
     // drag and snap somewhere the user didn't intend.
     if (!moved) {
-      const resting = knobAngle(currentMethodIndex(), count);
+      const resting = knobAngle(currentKnobIndex(group), count);
       if (Math.abs(angle - resting) < KNOB_DRAG_SLOP) return;
       moved = true;
     }
-    setMethodIndex(nearestDetent(angle, count));
+    setKnobIndex(group, nearestDetent(angle, count));
   });
 
   const release = (event) => {
@@ -2158,8 +2235,8 @@ function wireKnob() {
     capture(event, false);
     // A click, not a drag: step to the next position and wrap.
     if (!moved) {
-      const count = methodRadios().length;
-      setMethodIndex((currentMethodIndex() + 1) % count);
+      const count = knobRadios(group).length;
+      setKnobIndex(group, (currentKnobIndex(group) + 1) % count);
     }
   };
 
@@ -2170,7 +2247,10 @@ function wireKnob() {
     "wheel",
     (event) => {
       event.preventDefault();
-      setMethodIndex(currentMethodIndex() + (event.deltaY > 0 ? 1 : -1));
+      setKnobIndex(
+        group,
+        currentKnobIndex(group) + (event.deltaY > 0 ? 1 : -1),
+      );
     },
     { passive: false },
   );
@@ -2207,7 +2287,7 @@ function wireControls() {
     radio.addEventListener("change", () => {
       if (!radio.checked) return;
       state.method = radio.value;
-      syncKnob();
+      syncKnob("method");
       status(
         radio.value === "array"
           ? "standard array 15/14/13/12/10/8"
@@ -2217,8 +2297,24 @@ function wireControls() {
     });
   });
 
-  wireKnob();
-  syncKnob();
+  document.querySelectorAll('[name="setting"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      state.setting = radio.value;
+      syncKnob("setting");
+      applySetting();
+      status(settingFor(state.setting).label + " panel");
+      // The setting does not reach buildCharacter yet, so the sheet is the
+      // same character either way. Re-running the "searching" animation
+      // would imply a re-roll that did not happen.
+      commit(false);
+    });
+  });
+
+  wireKnob("method");
+  wireKnob("setting");
+  syncKnob("method");
+  syncKnob("setting");
 
   byId("copy").addEventListener("click", copySheet);
 
@@ -2237,11 +2333,20 @@ function wireControls() {
 function applySerial(parsed) {
   state.seeds = parsed.seeds;
   state.method = parsed.method;
-  const radio = document.querySelector(
-    '[name="method"][value="' + state.method + '"]',
-  );
-  if (radio) radio.checked = true;
-  syncKnob();
+  state.setting = parsed.setting;
+
+  [
+    ["method", state.method],
+    ["setting", state.setting],
+  ].forEach((pair) => {
+    const radio = document.querySelector(
+      '[name="' + pair[0] + '"][value="' + pair[1] + '"]',
+    );
+    if (radio) radio.checked = true;
+    syncKnob(pair[0]);
+  });
+
+  applySetting();
 }
 
 // Paste a serial into the address bar of an open tab and it should rebuild
@@ -2276,6 +2381,10 @@ function init() {
   } else {
     status("ready");
   }
+
+  // Generic reads from the base tokens, but stamp the attribute anyway so
+  // the panel's skin is always stated rather than implied by its absence.
+  applySetting();
 
   wireControls();
   wireHashChange();
