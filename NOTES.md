@@ -287,6 +287,15 @@ Deliberate choices worth remembering:
   scores either way.
 - **Print styles.** Printing hides the panel and prints the sheet in two
   columns, because a character sheet you can't print is a bit of a joke.
+- **Pasted serials work in an open tab.** A `hashchange` listener rebuilds
+  the character, so the piece's central claim -- that the link rebuilds
+  this exact character -- holds whether you open the link fresh or paste
+  it into a tab that is already up. `commit()` writes the hash with
+  `history.replaceState`, which does not fire `hashchange`, so the
+  listener only ever sees a change the reader made. A hash that isn't a
+  valid serial is refused and the real one is put back, rather than
+  leaving the address bar describing a character that isn't on screen.
+  Back and forward work as a side effect.
 - **The ability-score selector is a knob, not radio buttons.** A rotary
   switch is what the panel would actually have. The radios are still the
   real control though: they hold the value, take focus, and answer to the

@@ -2232,21 +2232,53 @@ function wireControls() {
   });
 }
 
+// Load a parsed serial into the panel. The knob is synced explicitly because
+// setting .checked in script does not fire a change event.
+function applySerial(parsed) {
+  state.seeds = parsed.seeds;
+  state.method = parsed.method;
+  const radio = document.querySelector(
+    '[name="method"][value="' + state.method + '"]',
+  );
+  if (radio) radio.checked = true;
+  syncKnob();
+}
+
+// Paste a serial into the address bar of an open tab and it should rebuild
+// that character, the same as opening the link fresh. commit() writes the
+// hash with history.replaceState, which does not fire hashchange, so this
+// only ever runs for a change the reader made.
+function wireHashChange() {
+  window.addEventListener("hashchange", () => {
+    const parsed = parseSerial(window.location.hash);
+
+    if (!parsed) {
+      // Not a serial. Put ours back rather than let the address bar sit there
+      // describing a character that isn't on screen.
+      window.history.replaceState(null, "", "#" + serialOf(state));
+      status("serial not recognised");
+      return;
+    }
+
+    if (serialOf(parsed) === serialOf(state)) return;
+
+    applySerial(parsed);
+    status("loaded from serial");
+    commit(true);
+  });
+}
+
 function init() {
   const fromHash = parseSerial(window.location.hash);
   if (fromHash) {
-    state.seeds = fromHash.seeds;
-    state.method = fromHash.method;
-    const radio = document.querySelector(
-      '[name="method"][value="' + state.method + '"]',
-    );
-    if (radio) radio.checked = true;
+    applySerial(fromHash);
     status("loaded from serial");
   } else {
     status("ready");
   }
 
   wireControls();
+  wireHashChange();
   commit(false);
 }
 
