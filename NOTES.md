@@ -624,6 +624,64 @@ Open items:
 1. Attribution is in the page footer and required by CC BY 4.0 — don't
    drop it when editing.
 
+- **The setting knob stopped being cosmetic.** It re-skinned the panel,
+  re-cut the legends, lit a lamp and wrote a letter into the serial, and
+  reached `buildCharacter` not at all -- the note under the serial said so
+  in as many words, which was the honest disclosure that survived the
+  label cull. It now narrows what can be rolled and changes who comes
+  back, so that sentence is gone and the note says what the knob actually
+  does.
+  What a setting can carry: species and class filters (the same signature
+  a cartridge's take), per-species name banks, its own epithets, a list of
+  homelands, and subclass renames by class id. Every field is optional and
+  every one falls back, so generic carries none of them and stays the
+  absence of a setting rather than one of five. Greyhawk drops the
+  dragonborn and the goliath; dark sun drops the gnome, dragonborn,
+  tiefling and orc, and the cleric and paladin with the gods; dragonlance
+  drops the orc, goliath, dragonborn, tiefling and warlock; the realms
+  refuse nothing, which is their whole character.
+- **Two species were added, and they belong to one world each.** A
+  half-dwarf on Athas and the roadkin on Krynn. A species now carries an
+  optional `settings` list -- no list means everywhere, which is what all
+  nine SRD entries are, so the generic roster filters down to exactly
+  those nine in their original order. **New entries are appended, never
+  inserted:** the serial's name pin is a raw index into `SPECIES`, so an
+  insert would rewrite every serial that carries an `N`. Both come with a
+  `NAME_BANKS` entry, which is not optional -- `buildName` reads that table
+  unguarded and throws for a species that is missing from it.
+  Two hard-coded species checks became fields on the way past:
+  `species.id === "dwarf"` for the extra hit point per level is now
+  `hpPerLevel`, and `keenSenses` grew an optional `keenSenseLabel` so the
+  roadkin's version is not called Keen Senses. The `small folk` cartridge
+  stopped naming gnomes and halflings and started testing size, so a
+  setting's own small folk are caught without that entry knowing they
+  exist.
+- **No new classes; renamed subclasses instead.** A `CLASSES` entry needs
+  a kit, features, an `ABILITY_PRIORITY` row, a `LEVEL_FEATURES` row and,
+  for a caster, a whole spell list and progression -- that is authoring a
+  class, and it is not what buys the setting feel. The `subclass` string
+  every class already carries does. `subclassFor` resolves it once in
+  `buildCharacter` and the character carries it, which meant sweeping
+  seven read sites off `character.cls.subclass`; the sheet and the PDF
+  disagreeing is exactly what a half-finished sweep looks like.
+- **The setting letter used to be cosmetic and is now load-bearing.** A
+  serial minted before this change that carried a letter rebuilt a plain
+  SRD character with a tinted panel; it now rebuilds a character of that
+  setting. Letterless serials -- which is every serial minted before
+  settings existed, and the majority since -- are untouched, and that was
+  checked rather than assumed: 4000 generic states across every cartridge,
+  method and level, fingerprinted on both sides of the change down to
+  attacks, equipment and spell lists, came back identical.
+- **The homeland draws from a stream of its own.** `makeRng("home/" +
+seed.name + "/" + setting.id)` rather than one more `pick` off
+  `backgroundRng` -- which is where the alignment draw sits, so appending
+  there would have shifted it and quietly rewritten every character ever
+  rolled. A new stream changes nothing that came before it.
+- **Fixed in passing: derived party members were built at level 1.**
+  `partyMember` copied the method, setting, cartridge, flourish and name
+  pin but not the level, so every member past the first ignored the level
+  knob and the serial its pull button spelled dropped the `L` group.
+
 Restyled 2026-08-22 against the actual EP–1320 product page rather than
 a general impression of the brand. Colours, the 3px frame weight, the
 4px corner radius and the absence of letter-spacing are all sampled from
