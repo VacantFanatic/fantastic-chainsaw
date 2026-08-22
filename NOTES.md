@@ -517,8 +517,41 @@ in this browser`, or `needs https or localhost` rather than failing
     setting does more than it does, so the sentence moved to the note
     under the serial rather than disappearing. Not spelling things out is
     a style; misleading someone is not.
+- **The knobs moved out from under aux to under the display, and got
+  their names back.** Each knob is labelled; no _position_ is. The word
+  sits on the panel under the cap, where a finger cannot cover it, the
+  same placement the transport keys use. Aux is empty and deliberately
+  TBD -- most likely whatever the next machine on this site wants to hand
+  to this one.
+- **A sixth knob in the input drawer sets the level, 1 to 5.** It is not
+  a seed dial, so it is a five-position switch that looks like the mode
+  knobs rather than the encoders beside it. Level rides in the serial as
+  a trailing `L<n>`, written only above 1, so pre-knob serials still spell
+  the same character. `PROFICIENCY_BONUS` stopped being a module constant
+  and became `character.proficiency`, computed per level and read off the
+  character by every renderer and exporter.
+  What the level actually drives: proficiency bonus (+3 at 5), hit points
+  by fixed average per level, the ability score improvement at 4 spent on
+  the class's first-priority ability, subclass at 3, and spell slots,
+  cantrips and prepared counts per class per level, including warlock
+  pact magic on its own table.
+  **One deliberate output change:** the sheet used to print a subclass at
+  level 1. Every 2024 class takes its subclass at 3, so it now appears
+  only from 3 up -- which means an old level 1 link renders without the
+  subclass line it used to show. That is the same trade the SRD proofread
+  made when it corrected the dragonborn breath weapon: the rules win.
 
 Open items:
+
+1. **Proofread the level 2-5 tables against the SRD.** Every other number
+   in `character-generator.js` was diffed against the document, and five
+   real errors fell out of that pass. The new level tables have _not_ had
+   it -- the fetch was blocked by a spend limit when they were written,
+   so they are written from knowledge of the 2024 rules and are marked
+   unverified in the file itself. What needs checking: cantrip and
+   prepared-spell counts per class per level, the class feature lists for
+   levels 2-5, and the half-caster slot column. The level 1 column is the
+   old proofread data and is sound.
 
 1. ~~**Proofread the rules data against the PDF.**~~ **Done 2026-08-22.**
    The SRD was fetched and diffed against the data. Five things were
@@ -549,7 +582,7 @@ Open items:
    background +2/+1 spread capped at 20, HP, AC, initiative with Alert,
    spell save DC and attack bonus, Hunter's Mark, and the subclass names.
 
-2. **The generator is wider than the SRD, and the spec row overstates
+1. **The generator is wider than the SRD, and the spec row overstates
    the licence.** Deliberate, but worth knowing: 12 of the 16
    backgrounds, 8 of the 12 origin feats, and 2 of the 6 fighting styles
    (Dueling, Protection) are 2024 PHB content that is _not_ in SRD 5.2.1
@@ -561,13 +594,13 @@ Open items:
    this is the thing to resolve — either cut the extra content or
    reword the row.
 
-3. **Level 1 only.** Nothing scales, and there's no level control. That's
+1. **Level 1 only.** Nothing scales, and there's no level control. That's
    a scope choice, not an oversight — levels 2+ need class tables the
    panel has no room for.
-4. **Backgrounds always take the 50 GP option** rather than the
+1. **Backgrounds always take the 50 GP option** rather than the
    equipment package, because the packages aren't in the data yet. This
    is legal — the SRD offers exactly that choice — and the sheet says so.
-5. Attribution is in the page footer and required by CC BY 4.0 — don't
+1. Attribution is in the page footer and required by CC BY 4.0 — don't
    drop it when editing.
 
 Restyled 2026-08-22 against the actual EP–1320 product page rather than
