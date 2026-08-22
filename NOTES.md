@@ -11,8 +11,8 @@ it's a list, roughly in the order I'd tackle it.
 
 ## Verified bugs
 
-> **Status:** items 1 and 2 are **fixed**; see the notes inline. Item 3 and
-> everything below it is still open.
+> **Status:** items 1, 2 and 3 are **fixed**; see the notes inline. Item 4
+> and most of what follows is still open — individual items are marked.
 
 ### 1. The static strip is blank on most screens (`js/main.js`) — FIXED
 
@@ -114,7 +114,29 @@ So the token is split:
 hair and is used at 0.75rem in `.site-foot a` and `.site-head__tag`.
 `#ad4118` would clear it at 4.95:1.
 
-### 3. The "source" link is a placeholder (`index.html:73`)
+### 3. The starfield canvas was `dpr x` too wide (`pages/starfield.html`) — FIXED
+
+Found while checking the distortion panel at mobile widths. `#stars` set
+`position: absolute; inset: 0` but no `width`/`height`. For an absolutely
+positioned **replaced** element, `width: auto` resolves to the element's
+_intrinsic_ width — for a canvas that's the `width`/`height` content
+attributes, which this page sets in device pixels. So `inset: 0` never
+stretched it:
+
+| deviceScaleFactor | canvas CSS width | viewport |
+| ----------------- | ---------------- | -------- |
+| 1                 | 390              | 390      |
+| 3                 | 1170             | 390      |
+
+It looked correct at DPR 1 only because the attribute happened to equal the
+viewport width. Everywhere else the element overflowed and the field was
+effectively cropped. Same family as bug 1.
+
+Fixed by adding explicit `width: 100%; height: 100%` alongside `inset: 0`.
+Verified: canvas CSS box now equals the viewport at DPR 1, 2 and 3, no
+horizontal overflow, and stars land in all four quadrants.
+
+### 4. The "source" link is a placeholder (`index.html:73`)
 
 ```html
 <a href="https://github.com/" target="_blank" rel="noopener">source</a>
@@ -146,11 +168,11 @@ default` hides this from mouse users, but they're still in the tab order
   continuously, and on mobile the address bar showing/hiding fires `resize`
   and wipes the field. Better: keep the stars and rescale their `baseX`/
   `baseY` proportionally. Debouncing would help either way.
-- **`step()` is called twice under reduced motion**
-  (`pages/starfield.js:105-113`). Line 107 already draws the still frame;
-  since `prefersReducedMotion` suppresses the `requestAnimationFrame`, the
-  guarded second call at line 112 just draws a near-identical frame over it.
-  The comment describes what line 107 does. Delete the trailing block.
+- ~~**`step()` is called twice under reduced motion.**~~ **FIXED.** The
+  draw loop was restructured when the distortion sliders were added:
+  `frame()` now only paints, and `loop()` is what schedules itself, so
+  reduced motion simply calls `frame()` once. The sliders also repaint that
+  still frame on every change, so they keep working with no loop running.
 - **`pointerleave` on `window` is unreliable** (`pages/starfield.js:100`).
   The event doesn't bubble, and the conventional target for "pointer left
   the page" is `document`/`documentElement`, not `window`. I did not
@@ -165,14 +187,14 @@ default` hides this from mouse users, but they're still in the tab order
 
 ## Polish
 
-- **`100vh` on mobile** (`pages/starfield.html:15`) combined with
-  `overflow: hidden` means the piece is clipped by dynamic browser chrome.
-  `100dvh` is the fix.
-- **Font preconnect is incomplete and inconsistent.** `index.html`
-  preconnects to `fonts.googleapis.com` but not `fonts.gstatic.com`
-  (crossorigin), which is where the font files actually come from —
-  so the connection that matters isn't warmed. `starfield.html` has no
-  preconnect at all while loading the same stylesheet.
+- ~~**`100vh` on mobile.**~~ **FIXED** — `pages/starfield.html` now sets
+  `100dvh` with a `100vh` fallback. This became load-bearing once the
+  distortion panel was anchored to the bottom of that page.
+- **Font preconnect is incomplete on `index.html`.** It preconnects to
+  `fonts.googleapis.com` but not `fonts.gstatic.com` (crossorigin), which is
+  where the font files actually come from — so the connection that matters
+  isn't warmed. `starfield.html` **is now fixed** (it had no preconnect at
+  all); `index.html` still needs the same two lines.
 - **No `<meta name="description">`, no Open Graph tags, no favicon** on
   either page. Browsers will request `/favicon.ico` and 404.
 - **README structure drift.** The tree is rooted at `site/` and the deploy
