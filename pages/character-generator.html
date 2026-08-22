@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CG–20 character generator — STATIC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=UnifrakturMaguntia&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="character-generator.css" />
+  </head>
+  <body class="page-forge">
+    <header class="topbar">
+      <a class="topbar__back" href="../index.html">&larr; index</a>
+      <span class="topbar__model">cg&ndash;20</span>
+      <span class="topbar__site">static</span>
+    </header>
+
+    <section class="hero">
+      <p class="hero__eyebrow">02 / character generator</p>
+      <h1 class="hero__title">
+        cg&ndash;20 <span class="hero__script">medieval</span>
+      </h1>
+      <p class="hero__lead">
+        a complete level 1 D&amp;D character, rolled on a machine that
+        doesn&rsquo;t exist. five channels, one serial number, no accounts.
+      </p>
+
+      <dl class="specs">
+        <div class="specs__row">
+          <dt>rules</dt>
+          <dd>SRD 5.2.1 &mdash; CC BY 4.0</dd>
+        </div>
+        <div class="specs__row">
+          <dt>output</dt>
+          <dd>one character, level 1</dd>
+        </div>
+        <div class="specs__row">
+          <dt>channels</dt>
+          <dd>5 &mdash; name, species, class, background, stats</dd>
+        </div>
+        <div class="specs__row">
+          <dt>storage</dt>
+          <dd>the URL. nothing else.</dd>
+        </div>
+        <div class="specs__row">
+          <dt>dependencies</dt>
+          <dd>none</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="unit" id="unit" aria-labelledby="unit-title">
+      <div class="unit__head">
+        <h2 class="unit__title" id="unit-title">generator</h2>
+        <span class="unit__badge" aria-hidden="true">cg&ndash;20</span>
+      </div>
+
+      <div class="unit__display" aria-hidden="true">
+        <p class="lcd__name" id="lcd-name">&mdash;</p>
+        <p class="lcd__build" id="lcd-build">&mdash;</p>
+        <div class="lcd__bars">
+          <span class="bar" data-bar="str"><b></b>str</span>
+          <span class="bar" data-bar="dex"><b></b>dex</span>
+          <span class="bar" data-bar="con"><b></b>con</span>
+          <span class="bar" data-bar="int"><b></b>int</span>
+          <span class="bar" data-bar="wis"><b></b>wis</span>
+          <span class="bar" data-bar="cha"><b></b>cha</span>
+        </div>
+        <p class="lcd__foot">
+          <span id="serial-lcd">&mdash;</span>
+          <span id="lcd-status">ready</span>
+        </p>
+      </div>
+
+      <div class="unit__deck">
+        <button class="key key--master" id="roll" type="button">
+          <span class="key__legend">roll</span>
+          <span class="key__sub">all open channels</span>
+        </button>
+
+        <div class="channels">
+          <div class="channel">
+            <span class="channel__num" aria-hidden="true">01</span>
+            <button
+              class="key"
+              type="button"
+              data-channel="name"
+              aria-label="re-roll the name"
+            >
+              <span class="key__legend">name</span>
+            </button>
+            <label class="dip">
+              <input
+                type="checkbox"
+                data-hold="name"
+                aria-label="hold the name channel"
+              />
+              <span class="dip__slot" aria-hidden="true"></span>
+              <span class="dip__label">hold</span>
+            </label>
+          </div>
+
+          <div class="channel">
+            <span class="channel__num" aria-hidden="true">02</span>
+            <button
+              class="key"
+              type="button"
+              data-channel="species"
+              aria-label="re-roll the species"
+            >
+              <span class="key__legend">species</span>
+            </button>
+            <label class="dip">
+              <input
+                type="checkbox"
+                data-hold="species"
+                aria-label="hold the species channel"
+              />
+              <span class="dip__slot" aria-hidden="true"></span>
+              <span class="dip__label">hold</span>
+            </label>
+          </div>
+
+          <div class="channel">
+            <span class="channel__num" aria-hidden="true">03</span>
+            <button
+              class="key"
+              type="button"
+              data-channel="class"
+              aria-label="re-roll the class"
+            >
+              <span class="key__legend">class</span>
+            </button>
+            <label class="dip">
+              <input
+                type="checkbox"
+                data-hold="class"
+                aria-label="hold the class channel"
+              />
+              <span class="dip__slot" aria-hidden="true"></span>
+              <span class="dip__label">hold</span>
+            </label>
+          </div>
+
+          <div class="channel">
+            <span class="channel__num" aria-hidden="true">04</span>
+            <button
+              class="key"
+              type="button"
+              data-channel="background"
+              aria-label="re-roll the background"
+            >
+              <span class="key__legend">backgr.</span>
+            </button>
+            <label class="dip">
+              <input
+                type="checkbox"
+                data-hold="background"
+                aria-label="hold the background channel"
+              />
+              <span class="dip__slot" aria-hidden="true"></span>
+              <span class="dip__label">hold</span>
+            </label>
+          </div>
+
+          <div class="channel">
+            <span class="channel__num" aria-hidden="true">05</span>
+            <button
+              class="key"
+              type="button"
+              data-channel="stats"
+              aria-label="re-roll the ability scores"
+            >
+              <span class="key__legend">stats</span>
+            </button>
+            <label class="dip">
+              <input
+                type="checkbox"
+                data-hold="stats"
+                aria-label="hold the ability score channel"
+              />
+              <span class="dip__slot" aria-hidden="true"></span>
+              <span class="dip__label">hold</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="unit__side">
+          <fieldset class="mode">
+            <legend>ability scores</legend>
+            <label class="mode__opt">
+              <input type="radio" name="method" value="array" checked />
+              <span>standard array</span>
+            </label>
+            <label class="mode__opt">
+              <input type="radio" name="method" value="dice" />
+              <span>4d6, drop lowest</span>
+            </label>
+          </fieldset>
+
+          <button class="key key--wide" id="copy" type="button">
+            <span class="key__legend">copy</span>
+            <span class="key__sub">sheet as plain text</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="unit__serial">
+        ser. <code id="serial">&mdash;</code>
+        <span class="unit__note">
+          the address bar holds this serial &mdash; the link rebuilds this exact
+          character. <b>hold</b> keeps a channel&rsquo;s seed when you press
+          roll. press <kbd>r</kbd> to roll.
+        </span>
+      </p>
+    </section>
+
+    <p class="sr-only" id="announce" aria-live="polite"></p>
+
+    <main class="sheet" id="sheet">
+      <header class="sheet__head">
+        <div class="field field--name">
+          <span class="field__label">character name</span>
+          <span class="field__value" id="sheet-name">&mdash;</span>
+        </div>
+        <div class="sheet__head-row">
+          <div class="field">
+            <span class="field__label">background</span>
+            <span class="field__value" id="sheet-background">&mdash;</span>
+          </div>
+          <div class="field">
+            <span class="field__label">class</span>
+            <span class="field__value" id="sheet-class">&mdash;</span>
+          </div>
+          <div class="field">
+            <span class="field__label">species</span>
+            <span class="field__value" id="sheet-species">&mdash;</span>
+          </div>
+          <div class="field">
+            <span class="field__label">subclass</span>
+            <span class="field__value" id="sheet-subclass">&mdash;</span>
+          </div>
+          <div class="field">
+            <span class="field__label">level</span>
+            <span class="field__value">1</span>
+          </div>
+          <div class="field">
+            <span class="field__label">xp</span>
+            <span class="field__value">0</span>
+          </div>
+          <div class="field">
+            <span class="field__label">alignment</span>
+            <span class="field__value" id="sheet-alignment">&mdash;</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="sheet__grid">
+        <div class="column">
+          <h2 class="column__title">ability scores</h2>
+          <section class="abil">
+            <div class="abil__box">
+              <span class="abil__name">Strength</span>
+              <span class="abil__mod" id="mod-str">+0</span>
+              <span class="abil__score">score <b id="score-str">10</b></span>
+            </div>
+            <p class="abil__boost" id="boost-str"></p>
+            <ul class="checks">
+              <li class="check" data-save="str">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">saving throw</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="athletics">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Athletics</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+            </ul>
+          </section>
+          <section class="abil">
+            <div class="abil__box">
+              <span class="abil__name">Dexterity</span>
+              <span class="abil__mod" id="mod-dex">+0</span>
+              <span class="abil__score">score <b id="score-dex">10</b></span>
+            </div>
+            <p class="abil__boost" id="boost-dex"></p>
+            <ul class="checks">
+              <li class="check" data-save="dex">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">saving throw</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="acrobatics">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Acrobatics</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="sleight-of-hand">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Sleight of Hand</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="stealth">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Stealth</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+            </ul>
+          </section>
+          <section class="abil">
+            <div class="abil__box">
+              <span class="abil__name">Constitution</span>
+              <span class="abil__mod" id="mod-con">+0</span>
+              <span class="abil__score">score <b id="score-con">10</b></span>
+            </div>
+            <p class="abil__boost" id="boost-con"></p>
+            <ul class="checks">
+              <li class="check" data-save="con">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">saving throw</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+            </ul>
+          </section>
+          <section class="abil">
+            <div class="abil__box">
+              <span class="abil__name">Intelligence</span>
+              <span class="abil__mod" id="mod-int">+0</span>
+              <span class="abil__score">score <b id="score-int">10</b></span>
+            </div>
+            <p class="abil__boost" id="boost-int"></p>
+            <ul class="checks">
+              <li class="check" data-save="int">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">saving throw</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="arcana">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Arcana</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="history">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">History</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="investigation">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Investigation</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="nature">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Nature</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="religion">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Religion</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+            </ul>
+          </section>
+          <section class="abil">
+            <div class="abil__box">
+              <span class="abil__name">Wisdom</span>
+              <span class="abil__mod" id="mod-wis">+0</span>
+              <span class="abil__score">score <b id="score-wis">10</b></span>
+            </div>
+            <p class="abil__boost" id="boost-wis"></p>
+            <ul class="checks">
+              <li class="check" data-save="wis">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">saving throw</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="animal-handling">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Animal Handling</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="insight">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Insight</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="medicine">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Medicine</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="perception">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Perception</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="survival">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Survival</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+            </ul>
+          </section>
+          <section class="abil">
+            <div class="abil__box">
+              <span class="abil__name">Charisma</span>
+              <span class="abil__mod" id="mod-cha">+0</span>
+              <span class="abil__score">score <b id="score-cha">10</b></span>
+            </div>
+            <p class="abil__boost" id="boost-cha"></p>
+            <ul class="checks">
+              <li class="check" data-save="cha">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">saving throw</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="deception">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Deception</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="intimidation">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Intimidation</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="performance">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Performance</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+              <li class="check" data-skill="persuasion">
+                <span class="check__dot" aria-hidden="true"></span>
+                <span class="check__name">Persuasion</span>
+                <span class="check__mod" data-mod>+0</span>
+                <span class="sr-only" data-note></span>
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <div class="column">
+          <h2 class="column__title">combat</h2>
+
+          <div class="boxes">
+            <div class="box box--big">
+              <span class="box__label">armor class</span>
+              <span class="box__value" id="armor-class">10</span>
+              <span class="box__note" id="armor-note">unarmored</span>
+            </div>
+            <div class="box box--big">
+              <span class="box__label">initiative</span>
+              <span class="box__value" id="initiative">+0</span>
+              <span class="box__note">dexterity</span>
+            </div>
+            <div class="box box--big">
+              <span class="box__label">hit points</span>
+              <span class="box__value" id="hit-points">0</span>
+              <span class="box__note">maximum</span>
+            </div>
+            <div class="box">
+              <span class="box__label">speed</span>
+              <span class="box__value box__value--small" id="speed"
+                >30 ft.</span
+              >
+            </div>
+            <div class="box">
+              <span class="box__label">size</span>
+              <span class="box__value box__value--small" id="size">Medium</span>
+            </div>
+            <div class="box">
+              <span class="box__label">prof. bonus</span>
+              <span class="box__value box__value--small" id="prof-bonus"
+                >+2</span
+              >
+            </div>
+            <div class="box">
+              <span class="box__label">hit dice</span>
+              <span class="box__value box__value--small" id="hit-dice"
+                >1d8</span
+              >
+            </div>
+            <div class="box box--wide">
+              <span class="box__label">heroic inspiration</span>
+              <span class="box__value box__value--small" id="heroic-inspiration"
+                >no</span
+              >
+            </div>
+            <div class="box box--wide">
+              <span class="box__label">death saves</span>
+              <span class="pips" aria-hidden="true">
+                <b></b><b></b><b></b><i></i><i></i><i></i>
+              </span>
+            </div>
+          </div>
+
+          <div class="passives">
+            <div class="passive">
+              <span class="passive__label">passive perception</span>
+              <span class="passive__value" id="passive-perception">10</span>
+            </div>
+            <div class="passive">
+              <span class="passive__label">passive insight</span>
+              <span class="passive__value" id="passive-insight">10</span>
+            </div>
+            <div class="passive">
+              <span class="passive__label">passive investigation</span>
+              <span class="passive__value" id="passive-investigation">10</span>
+            </div>
+          </div>
+
+          <h3 class="block__title">weapons &amp; damage cantrips</h3>
+          <div class="table-scroll">
+            <table class="attacks">
+              <thead>
+                <tr>
+                  <th scope="col">name</th>
+                  <th scope="col">atk</th>
+                  <th scope="col">damage</th>
+                  <th scope="col">notes</th>
+                </tr>
+              </thead>
+              <tbody id="attacks"></tbody>
+            </table>
+          </div>
+
+          <h3 class="block__title">equipment</h3>
+          <ul class="plain" id="equipment"></ul>
+          <p class="coin">coin <b id="gold">0 GP</b></p>
+        </div>
+
+        <div class="column">
+          <h2 class="column__title">features &amp; traits</h2>
+
+          <h3 class="block__title">class features</h3>
+          <ul class="plain" id="class-features"></ul>
+
+          <h3 class="block__title">species traits</h3>
+          <ul class="plain" id="species-traits"></ul>
+
+          <h3 class="block__title">feats</h3>
+          <ul class="plain" id="feats"></ul>
+
+          <h3 class="block__title">proficiencies &amp; training</h3>
+          <dl class="specs specs--tight">
+            <div class="specs__row">
+              <dt>armor</dt>
+              <dd id="prof-armor">&mdash;</dd>
+            </div>
+            <div class="specs__row">
+              <dt>weapons</dt>
+              <dd id="prof-weapons">&mdash;</dd>
+            </div>
+            <div class="specs__row">
+              <dt>tools</dt>
+              <dd id="prof-tools">&mdash;</dd>
+            </div>
+            <div class="specs__row">
+              <dt>background tool</dt>
+              <dd id="prof-background-tool">&mdash;</dd>
+            </div>
+            <div class="specs__row">
+              <dt>languages</dt>
+              <dd id="languages">&mdash;</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <section class="spellcasting" id="spellcasting" hidden>
+        <h2 class="column__title">
+          <span id="spell-label">spellcasting</span>
+        </h2>
+        <div class="spell-stats">
+          <div class="box">
+            <span class="box__label">ability</span>
+            <span class="box__value box__value--small" id="spell-ability"
+              >&mdash;</span
+            >
+          </div>
+          <div class="box">
+            <span class="box__label">modifier</span>
+            <span class="box__value box__value--small" id="spell-mod">+0</span>
+          </div>
+          <div class="box">
+            <span class="box__label">save dc</span>
+            <span class="box__value box__value--small" id="spell-dc">10</span>
+          </div>
+          <div class="box">
+            <span class="box__label">attack bonus</span>
+            <span class="box__value box__value--small" id="spell-attack"
+              >+0</span
+            >
+          </div>
+          <div class="box">
+            <span class="box__label">slots</span>
+            <span class="box__value box__value--small" id="spell-slots"
+              >&mdash;</span
+            >
+          </div>
+          <div class="box">
+            <span class="box__label">spellbook</span>
+            <span class="box__value box__value--small" id="spell-book"
+              >&mdash;</span
+            >
+          </div>
+        </div>
+        <div class="spell-lists">
+          <div>
+            <h3 class="block__title">cantrips</h3>
+            <ul class="plain" id="cantrips"></ul>
+          </div>
+          <div>
+            <h3 class="block__title">prepared spells</h3>
+            <ul class="plain" id="prepared"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="colophon">
+      <p class="colophon__line">
+        this work includes material from the System Reference Document 5.2
+        (&ldquo;SRD 5.2&rdquo;) by Wizards of the Coast LLC, available at
+        <a href="https://www.dndbeyond.com/srd" rel="noopener"
+          >dndbeyond.com/srd</a
+        >. the SRD 5.2 is licensed under the
+        <a
+          href="https://creativecommons.org/licenses/by/4.0/legalcode"
+          rel="noopener"
+          >Creative Commons Attribution 4.0 International License</a
+        >.
+      </p>
+      <p class="colophon__line">
+        names and epithets are made up here &mdash; the SRD has no name tables.
+        not affiliated with, or endorsed by, Wizards of the Coast or teenage
+        engineering. the panel is an homage, drawn in CSS.
+      </p>
+      <p class="colophon__line">
+        <a href="../index.html">&larr; back to the index</a>
+      </p>
+    </footer>
+
+    <script src="character-generator.js"></script>
+  </body>
+</html>
