@@ -232,3 +232,53 @@ Worth not regressing:
   scripts). The implementation has the gaps noted above, but the intent is
   consistently there.
 - Genuinely no build step. Cloning and opening `index.html` works.
+
+## New piece: cg–20 character generator
+
+Added 2026-08-22 as entry `02` in the index:
+`pages/character-generator.{html,css,js}`. It rolls a complete level 1
+D&D character from SRD 5.2.1 data and lays the result out the way the
+2024 character sheet does — abilities and their skills down the left,
+combat in the middle, features and training on the right — wrapped in a
+teenage-engineering-style front panel.
+
+How it works, in one paragraph: the character is a pure function of five
+short seeds (name / species / class / background / stats) plus the ability
+score method. Those seeds, printed with dashes, are the serial number on
+the panel and the URL fragment, so a link rebuilds the exact same
+character. The DIP switches hold a channel's seed across a roll. Nothing
+is stored anywhere else — no cookies, no `localStorage`.
+
+Deliberate choices worth remembering:
+
+- **First piece with its own stylesheet.** `character-generator.css`
+  defines a page-local `:root` palette (bone panel, orange key, small
+  black display) instead of the shared paper/ink one. `style.css` still
+  supplies the type stacks. This is the "every page is allowed to be its
+  own thing" rule being used on purpose.
+- **Contrast was checked, not assumed.** Every text pair on the page
+  clears 4.5:1 — including the two cuts of orange: `--orange` for fills
+  and indicator dots, `--orange-text` (darker) wherever orange is
+  actually text.
+- **Reduced motion.** The only animation is the display "searching" for
+  a moment before it settles; with `prefers-reduced-motion` the sheet is
+  written immediately instead. The bar meters still show the final
+  scores either way.
+- **Print styles.** Printing hides the panel and prints the sheet in two
+  columns, because a character sheet you can't print is a bit of a joke.
+
+Open items:
+
+1. **Proofread the rules data against the PDF.** The SRD 5.2.1 data
+   (species traits, class kits, backgrounds, spell lists) was written out
+   by hand; `media.dndbeyond.com` is blocked from the network this was
+   built on, so none of it was diffed against the source document. The
+   class starting-equipment packages and the level 1 spell lists are the
+   most likely places for a slip.
+2. **Level 1 only.** Nothing scales, and there's no level control. That's
+   a scope choice, not an oversight — levels 2+ need class tables the
+   panel has no room for.
+3. **Backgrounds always take the 50 GP option** rather than the
+   equipment package, because the packages aren't in the data yet.
+4. Attribution is in the page footer and required by CC BY 4.0 — don't
+   drop it when editing.

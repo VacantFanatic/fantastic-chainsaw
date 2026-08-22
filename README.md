@@ -14,8 +14,11 @@ site/
 ├── js/
 │   └── main.js         # home page behavior (static-strip effect, phosphor toggle)
 ├── pages/
-│   ├── starfield.html  # example interactive piece: "a slow drift"
-│   └── starfield.js
+│   ├── starfield.html  # interactive piece: "a slow drift"
+│   ├── starfield.js
+│   ├── character-generator.html   # interactive piece: "cg–20"
+│   ├── character-generator.css    # page-local palette + panel/sheet layout
+│   └── character-generator.js     # SRD 5.2.1 data + seeded generator
 ├── .prettierrc.json    # formatting rules
 └── README.md
 ```
@@ -25,7 +28,8 @@ site/
 1. Create `pages/your-page.html` (copy `starfield.html` as a starting
    point if it's interactive, or just write plain HTML for a blog post).
 2. Link to `../css/style.css` for the shared look, or write scoped
-   `<style>` for anything page-specific.
+   `<style>` for anything page-specific. A piece big enough to need it
+   can bring its own stylesheet next to it (see `character-generator.css`).
 3. Add an `<li class="entry">` to the list in `index.html` pointing at
    it, and remove the `entry--placeholder` class once it's real.
 4. Format before committing:
