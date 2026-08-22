@@ -138,66 +138,106 @@
             <div class="bay__panel">
               <h3 class="bay__title">input &mdash; patch a channel</h3>
               <p class="bay__note">
-                anything hashes to a seed: a band, a street, a line you like. a
-                patched channel holds until you unplug it. the text never
-                reaches the address bar &mdash; only the seed it minted.
+                one dial per channel. turning it walks that channel&rsquo;s seed
+                forward, turning it back brings the last one straight back
+                &mdash; the dial is its own undo, so it keeps no takes. a
+                dialled channel holds until you release it below.
               </p>
-              <div class="jacks">
-                <label class="jack">
-                  <span class="jack__num" aria-hidden="true">01</span>
-                  <span class="jack__label">name</span>
-                  <input
-                    type="text"
-                    data-patch="name"
-                    placeholder="patch name"
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
-                </label>
-                <label class="jack">
-                  <span class="jack__num" aria-hidden="true">02</span>
-                  <span class="jack__label">species</span>
-                  <input
-                    type="text"
-                    data-patch="species"
-                    placeholder="patch species"
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
-                </label>
-                <label class="jack">
-                  <span class="jack__num" aria-hidden="true">03</span>
-                  <span class="jack__label">class</span>
-                  <input
-                    type="text"
-                    data-patch="class"
-                    placeholder="patch class"
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
-                </label>
-                <label class="jack">
-                  <span class="jack__num" aria-hidden="true">04</span>
-                  <span class="jack__label">backgr.</span>
-                  <input
-                    type="text"
-                    data-patch="background"
-                    placeholder="patch backgr."
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
-                </label>
-                <label class="jack">
-                  <span class="jack__num" aria-hidden="true">05</span>
-                  <span class="jack__label">stats</span>
-                  <input
-                    type="text"
-                    data-patch="stats"
-                    placeholder="patch stats"
-                    autocomplete="off"
-                    spellcheck="false"
-                  />
-                </label>
+              <div class="dials">
+                <div class="dial">
+                  <span class="dial__num" aria-hidden="true">01</span>
+                  <div
+                    class="knob knob--dial"
+                    data-dial="name"
+                    role="spinbutton"
+                    tabindex="0"
+                    aria-label="name — dial a seed"
+                    aria-valuenow="0"
+                  >
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <span class="dial__label">name</span>
+                  <code class="dial__seed" data-dial-seed="name">&mdash;</code>
+                </div>
+                <div class="dial">
+                  <span class="dial__num" aria-hidden="true">02</span>
+                  <div
+                    class="knob knob--dial"
+                    data-dial="species"
+                    role="spinbutton"
+                    tabindex="0"
+                    aria-label="species — dial a seed"
+                    aria-valuenow="0"
+                  >
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <span class="dial__label">species</span>
+                  <code class="dial__seed" data-dial-seed="species"
+                    >&mdash;</code
+                  >
+                </div>
+                <div class="dial">
+                  <span class="dial__num" aria-hidden="true">03</span>
+                  <div
+                    class="knob knob--dial"
+                    data-dial="class"
+                    role="spinbutton"
+                    tabindex="0"
+                    aria-label="class — dial a seed"
+                    aria-valuenow="0"
+                  >
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <span class="dial__label">class</span>
+                  <code class="dial__seed" data-dial-seed="class">&mdash;</code>
+                </div>
+                <div class="dial">
+                  <span class="dial__num" aria-hidden="true">04</span>
+                  <div
+                    class="knob knob--dial"
+                    data-dial="background"
+                    role="spinbutton"
+                    tabindex="0"
+                    aria-label="backgr. — dial a seed"
+                    aria-valuenow="0"
+                  >
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <span class="dial__label">backgr.</span>
+                  <code class="dial__seed" data-dial-seed="background"
+                    >&mdash;</code
+                  >
+                </div>
+                <div class="dial">
+                  <span class="dial__num" aria-hidden="true">05</span>
+                  <div
+                    class="knob knob--dial"
+                    data-dial="stats"
+                    role="spinbutton"
+                    tabindex="0"
+                    aria-label="stats — dial a seed"
+                    aria-valuenow="0"
+                  >
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <span class="dial__label">stats</span>
+                  <code class="dial__seed" data-dial-seed="stats">&mdash;</code>
+                </div>
               </div>
             </div>
           </div>
