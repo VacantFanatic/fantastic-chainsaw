@@ -11,7 +11,10 @@ it's a list, roughly in the order I'd tackle it.
 
 ## Verified bugs
 
-### 1. The static strip is blank on most screens (`js/main.js`)
+> **Status:** items 1 and 2 are **fixed**; see the notes inline. Item 3 and
+> everything below it is still open.
+
+### 1. The static strip is blank on most screens (`js/main.js`) — FIXED
 
 The signature masthead effect only draws on the top-left quarter of its
 canvas on any HiDPI display — which is most laptops and every phone.
@@ -45,14 +48,28 @@ channel at the four corners of the backing store:
 At DPR 1 the noise covers the strip. At DPR 2, three quarters of it is
 transparent.
 
-Fix: generate the ImageData at backing-store size and drop the transform,
-since `putImageData` won't honor it either way:
+**Fixed.** The noise is now generated at CSS-pixel size into an offscreen
+buffer and scaled onto the device-pixel canvas with `drawImage` (which does
+respect the transform), rather than blitted with `putImageData` (which does
+not). Going through `drawImage` with `imageSmoothingEnabled = false` also
+keeps the grain the same apparent size on every display, instead of turning
+fine and smooth on retina screens.
 
-```js
-const imageData = ctx.createImageData(canvas.width, canvas.height);
-```
+Re-measured after the fix — noise coverage across a grid sweep of the whole
+backing store:
 
-### 2. Phosphor-mode body text fails WCAG AA badly (`css/style.css`)
+| deviceScaleFactor | backing store | coverage |
+| ----------------- | ------------- | -------- |
+| 1                 | 1000x28       | 100%     |
+| 1.5               | 1500x42       | 99%      |
+| 2                 | 2000x56       | 100%     |
+| 3                 | 3000x84       | 100%     |
+
+The 99% at DPR 1.5 is one sampled pixel that randomed to zero alpha —
+`alpha = 255 * shade * 0.5` rounds to 0 for roughly 0.8% of pixels, so about
+1 in 119 samples is expected. It's the noise, not a gap.
+
+### 2. Phosphor-mode body text fails WCAG AA badly (`css/style.css`) — FIXED
 
 `--phosphor-dim` (`#2f5b3d`) on `--phosphor-bg` (`#0b0f0a`) is **2.47:1**.
 AA needs 4.5:1 for normal text, 3:1 for large. It fails both.
@@ -81,8 +98,21 @@ the _only_ hover affordance on entry links (`.entry__link:hover
 nearly invisible. `--rust` at 4.47 misses by a hair and is used at 0.75rem
 in `.site-foot a` and `.site-head__tag`; nudging it darker clears it.
 
-Lightening `--phosphor-dim` to roughly `#4f9668` gets it past 4.5:1 while
-staying dimmer than `--phosphor-fg`.
+**Fixed**, but not by bumping the token in place. `--phosphor-dim` was doing
+two jobs: 8 text declarations _and_ 4 border declarations. Raising it far
+enough for text would have made the quiet dashed rules roughly twice as
+prominent, which is the wrong trade for this design.
+
+So the token is split:
+
+- `--phosphor-dim: #4f9668` — **text only**, now **5.42:1** (passes AA, and
+  still clearly dimmer than `--phosphor-fg` at 11.56:1).
+- `--phosphor-line: #2f5b3d` — **borders only**, unchanged at 2.47:1, which
+  is fine for a decorative rule.
+
+`--rust` at 4.47:1 is **still open** — it misses AA for normal text by a
+hair and is used at 0.75rem in `.site-foot a` and `.site-head__tag`.
+`#ad4118` would clear it at 4.95:1.
 
 ### 3. The "source" link is a placeholder (`index.html:73`)
 
