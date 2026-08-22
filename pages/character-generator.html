@@ -6,7 +6,7 @@
     <title>CG–20 character generator — STATIC</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&family=UnifrakturMaguntia&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=Cinzel:wght@400;700&family=Grenze+Gotisch:wght@500;700&family=IM+Fell+English&family=Metamorphous&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&family=UnifrakturMaguntia&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="../css/style.css" />
@@ -60,20 +60,88 @@
       </div>
 
       <div class="unit__display" aria-hidden="true">
-        <p class="lcd__name" id="lcd-name">&mdash;</p>
-        <p class="lcd__build" id="lcd-build">&mdash;</p>
-        <div class="lcd__bars">
-          <span class="bar" data-bar="str"><b></b>str</span>
-          <span class="bar" data-bar="dex"><b></b>dex</span>
-          <span class="bar" data-bar="con"><b></b>con</span>
-          <span class="bar" data-bar="int"><b></b>int</span>
-          <span class="bar" data-bar="wis"><b></b>wis</span>
-          <span class="bar" data-bar="cha"><b></b>cha</span>
+        <div class="lcd__main">
+          <p class="lcd__name" id="lcd-name">&mdash;</p>
+          <p class="lcd__build" id="lcd-build">&mdash;</p>
+          <div class="lcd__bars">
+            <span class="bar" data-bar="str"><b></b>str</span>
+            <span class="bar" data-bar="dex"><b></b>dex</span>
+            <span class="bar" data-bar="con"><b></b>con</span>
+            <span class="bar" data-bar="int"><b></b>int</span>
+            <span class="bar" data-bar="wis"><b></b>wis</span>
+            <span class="bar" data-bar="cha"><b></b>cha</span>
+          </div>
+          <p class="lcd__foot">
+            <span id="serial-lcd">&mdash;</span>
+            <span id="lcd-status">ready</span>
+          </p>
         </div>
-        <p class="lcd__foot">
-          <span id="serial-lcd">&mdash;</span>
-          <span id="lcd-status">ready</span>
-        </p>
+        <!-- A readout of the deck below, not a control: every lamp here has
+             a real switch under it, and the whole display is aria-hidden. -->
+        <div class="lcd__lamps">
+          <p class="lamps__head">hold</p>
+          <ul class="lamps">
+            <li class="lamp" data-lamp="hold-name">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <rect x="2.5" y="3.5" width="11" height="9" rx="1" />
+                <path d="M5 6.5h6M5 9.5h4" /></svg
+              >name
+            </li>
+            <li class="lamp" data-lamp="hold-species">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <circle cx="8" cy="5" r="2.2" />
+                <path d="M3.5 13.5c0-2.6 2-4.2 4.5-4.2s4.5 1.6 4.5 4.2" /></svg
+              >species
+            </li>
+            <li class="lamp" data-lamp="hold-class">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <path d="M8 2v8M5.5 10h5M8 10v3.5" /></svg
+              >class
+            </li>
+            <li class="lamp" data-lamp="hold-background">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <path
+                  d="M8 2.5 13 4.5v3.9c0 3-2.6 4.6-5 5.5-2.4-.9-5-2.5-5-5.5V4.5z"
+                /></svg
+              >backgr.
+            </li>
+            <li class="lamp" data-lamp="hold-stats">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <path d="M2.5 13.5h11M4.5 13V8M8 13V3.5M11.5 13v-3" /></svg
+              >stats
+            </li>
+          </ul>
+
+          <p class="lamps__head">scores</p>
+          <ul class="lamps">
+            <li class="lamp" data-lamp="method-array">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <rect x="2.5" y="3.5" width="11" height="9" rx="1" />
+                <path d="M2.5 6.5h11M2.5 9.5h11" /></svg
+              >array
+            </li>
+            <li class="lamp" data-lamp="method-dice">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+                <circle class="lamp__pip" cx="5.6" cy="5.6" r="1" />
+                <circle class="lamp__pip" cx="8" cy="8" r="1" />
+                <circle class="lamp__pip" cx="10.4" cy="10.4" r="1" /></svg
+              >4d6
+            </li>
+          </ul>
+
+          <p class="lamps__head">setting</p>
+          <ul class="lamps">
+            <li class="lamp" data-lamp="setting">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <path
+                  d="M8 13.7s4.4-4.1 4.4-7A4.4 4.4 0 0 0 3.6 6.7c0 2.9 4.4 7 4.4 7z"
+                />
+                <circle cx="8" cy="6.6" r="1.5" /></svg
+              ><span id="lamp-setting">generic</span>
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="unit__deck">
@@ -257,10 +325,16 @@
             </p>
           </fieldset>
 
-          <button class="key key--wide" id="copy" type="button">
-            <span class="key__legend">copy</span>
-            <span class="key__sub">sheet as plain text</span>
-          </button>
+          <div class="key-pair">
+            <button class="key key--wide" id="copy" type="button">
+              <span class="key__legend">copy</span>
+              <span class="key__sub">plain text</span>
+            </button>
+            <button class="key key--wide" id="export" type="button">
+              <span class="key__legend">export</span>
+              <span class="key__sub">sheet as PDF</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -268,8 +342,10 @@
         ser. <code id="serial">&mdash;</code>
         <span class="unit__note">
           the address bar holds this serial &mdash; the link rebuilds this exact
-          character. <b>hold</b> keeps a channel&rsquo;s seed when you press
-          roll. press <kbd>r</kbd> to roll.
+          character. <b>hold</b> keeps a channel across a roll; a held name
+          keeps the species it was named for too. ability scores are always
+          arranged the way the class wants them, so re-rolling class re-sorts
+          held numbers. press <kbd>r</kbd> to roll.
         </span>
       </p>
     </section>

@@ -326,6 +326,45 @@ Deliberate choices worth remembering:
   because they have to stay focusable. `KNOB_SPREAD` and the detent maths
   are written for N positions, so a third method is a data change rather
   than a rewrite.
+- **The display has a lamp bank.** The empty right-hand third of the LCD
+  now carries one lamp per switch on the deck: five holds, the two
+  ability-score modes, and the setting. They are a readout, not a second
+  set of controls -- the display is `aria-hidden` and every lamp has a
+  real input under it, with the status line still doing the speaking.
+  Lit is a filled glyph in `--screen-fg`, unlit a hollow one in
+  `--screen-dim`, so the state never rests on colour alone, and both
+  label states stay on a token that clears AA. The glyphs are inline SVG
+  drawn in `currentColor`, so a skin re-tints them for free.
+- **Each setting re-cuts the key legends.** `--legend`, `--legend-size`
+  and `--legend-weight` sit beside the colour tokens in every skin:
+  Grenze Gotisch for generic, Cinzel for the Realms (inscriptional
+  Roman, the grey box lineage), IM Fell English for Greyhawk (17th
+  century Fell types, ink spread and all, for the 1e look), Metamorphous
+  for Dark Sun (carved and sun-scorched, after Brom), Almendra for
+  Dragonlance (calligraphic, romantic). Size and weight are per-skin
+  because the five faces are nowhere near each other at a shared size.
+  Body copy and the sheet are untouched -- this is the panel's lettering
+  only. The faces come from the same Google Fonts link the page already
+  had, so it is still no build step and no install.
+- **A held name keeps its species.** Holding a channel freezes its seed,
+  but the name is drawn from the species' name bank, so re-rolling
+  species used to rename a character the panel said was held. Rolling
+  species while the name is held now pins the name to the species it was
+  drawn from, and rolling the name releases the pin. The pin rides in the
+  serial as a trailing `N<index>` group, written only when it is actually
+  in force -- same rule as the setting letter, so no serial minted before
+  it changes shape. Ability scores are a milder case of the same thing
+  and were left alone: the pool is held, but the arrangement follows the
+  class, which is what D&D does. The panel note says both out loud.
+- **The PDF is written by hand.** `export` builds a real PDF as a string
+  and hands it over as a blob: base-14 fonts so nothing is embedded, all
+  text escaped to WinAnsi so the file stays ASCII and a string index is a
+  byte offset for the xref table, two-column flow with page breaks. It is
+  the CG-20's own sheet, not the official 2024 form -- filling that would
+  need a PDF library and WotC's file in the repo, which breaks the
+  no-dependency rule and redistributes something that isn't SRD. Layout
+  and content are separate: `sheetSections` knows D&D and no points,
+  `pdfRow` knows points and no D&D.
 
 Open items:
 
