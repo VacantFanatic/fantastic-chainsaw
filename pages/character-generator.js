@@ -1808,6 +1808,10 @@ function syncLamps() {
     setLamp("method-" + method, state.method === method);
   });
 
+  Object.keys(TEMPOS).forEach((tempo) => {
+    setLamp("tempo-" + tempo, transport.tempo === tempo);
+  });
+
   const flourish = flourishFor(state.flourish);
   setLamp("flourish", flourish.id !== FLOURISHES[FLOURISH_DEFAULT].id);
   setText("lamp-flourish", flourish.label);
@@ -3882,6 +3886,7 @@ function wireTransport() {
       if (!radio.checked) return;
       transport.tempo = radio.value;
       syncKnob("tempo");
+      syncLamps();
       status("tempo — " + radio.value);
       // A new tempo takes hold immediately if the reel is running.
       if (transportRunning()) startTransport();
