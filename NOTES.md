@@ -367,12 +367,19 @@ Deliberate choices worth remembering:
   `pdfRow` knows points and no D&D.
 - **The machine has a port strip.** Every box this thing is modelled on
   has jacks along its top edge, and that strip is the part that says the
-  machine isn't the whole story. There are four, each opening a drawer
-  that slides out from under the strip: INPUT, SYNC, AUX, MIDI. OUTPUT is
-  a plain chip, because copy and export are already real keys on the deck
-  and a port that isn't a destination shouldn't pretend to be a control.
+  machine isn't the whole story. There are five, each opening a drawer
+  that slides out from under the strip: OUTPUT, INPUT, SYNC, AUX, MIDI.
   A chip lights when something is actually plugged into it, not merely
   when its drawer is open.
+- **OUTPUT is where the sheet leaves.** The copy and export keys moved
+  off the deck into its drawer, and a third key joined them: **json**.
+  The JSON is deliberately the _sheet_ as data -- every number a consumer
+  would want (saves, all eighteen skill modifiers, passives, attacks,
+  spellcasting or null) -- and not a dump of the generator's tables. A
+  species in it is a name and a size, not the whole SRD entry; anything
+  that wants to rebuild the machine should use the serial, which is in
+  the file along with the CC BY attribution. All three exports share one
+  `downloadFile`/`exportName` pair and name files `<slug>-<serial>.<ext>`.
 - **INPUT patches text into a channel, and costs the serial nothing.** A
   patched channel is a seed minted from a hash of your text instead of
   from `Math.random`, and `mintSeed` now mints all three kinds -- rolled,

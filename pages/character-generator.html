@@ -54,11 +54,18 @@
     </section>
 
     <section class="unit" id="unit" aria-labelledby="unit-title">
-      <!-- The top edge of the machine. OUTPUT is a plain chip because copy
-           and export are already real keys on the deck, and a port that
-           isn't a destination shouldn't pretend to be a control. -->
+      <!-- The top edge of the machine. Every chip here is a real port
+           with something behind it; OUTPUT is where the sheet leaves. -->
       <div class="unit__ports">
-        <span class="port port--dead" aria-hidden="true">output</span>
+        <button
+          class="port"
+          type="button"
+          data-port="output"
+          aria-expanded="false"
+          aria-controls="bay-output"
+        >
+          output
+        </button>
         <button
           class="port"
           type="button"
@@ -98,6 +105,34 @@
       </div>
 
       <div class="bays">
+        <section class="bay" id="bay-output" data-bay="output" hidden>
+          <div class="bay__inner">
+            <div class="bay__panel">
+              <h3 class="bay__title">output &mdash; take the sheet with you</h3>
+              <div class="key-row">
+                <button class="key key--wide" id="copy" type="button">
+                  <span class="key__legend">copy</span>
+                  <span class="key__sub">plain text</span>
+                </button>
+                <button class="key key--wide" id="export-pdf" type="button">
+                  <span class="key__legend">pdf</span>
+                  <span class="key__sub">a sheet to print</span>
+                </button>
+                <button class="key key--wide" id="export-json" type="button">
+                  <span class="key__legend">json</span>
+                  <span class="key__sub">the sheet as data</span>
+                </button>
+              </div>
+              <p class="bay__note">
+                plain text is for pasting into a chat window. the pdf is written
+                here rather than filled in, so it is this machine&rsquo;s sheet
+                and not the official form. the json is every number on the
+                sheet, for anything that would rather read it than look at it.
+              </p>
+            </div>
+          </div>
+        </section>
+
         <section class="bay" id="bay-input" data-bay="input" hidden>
           <div class="bay__inner">
             <div class="bay__panel">
@@ -563,17 +598,6 @@
               are still generic for every setting.
             </p>
           </fieldset>
-
-          <div class="key-pair">
-            <button class="key key--wide" id="copy" type="button">
-              <span class="key__legend">copy</span>
-              <span class="key__sub">plain text</span>
-            </button>
-            <button class="key key--wide" id="export" type="button">
-              <span class="key__legend">export</span>
-              <span class="key__sub">sheet as PDF</span>
-            </button>
-          </div>
         </div>
       </div>
 

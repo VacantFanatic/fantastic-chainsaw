@@ -2635,25 +2635,144 @@ function slugify(text) {
   );
 }
 
-function exportSheet() {
-  const character = buildCharacter(state);
-  const serial = serialOf(state);
-  const blob = new Blob([buildSheetPdf(character, serial)], {
-    type: "application/pdf",
-  });
-
+// The sheet leaves as a file the same way whatever it is made of, so
+// the two exports share everything except what they put in the blob.
+function downloadFile(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = slugify(character.name) + "-" + serial + ".pdf";
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
   // Revoked a beat later: revoking it inline cancels the download in
   // some browsers.
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
 
+function exportName(character, serial, extension) {
+  return slugify(character.name) + "-" + serial + "." + extension;
+}
+
+function exportSheet() {
+  const character = buildCharacter(state);
+  const serial = serialOf(state);
+
+  downloadFile(
+    new Blob([buildSheetPdf(character, serial)], { type: "application/pdf" }),
+    exportName(character, serial, "pdf"),
+  );
   status("sheet exported as PDF");
+}
+
+// The sheet as data rather than as a page. Deliberately not a dump of the
+// generator's own tables -- a species in here is a name and a size, not
+// the whole SRD entry -- because this is for something that wants to read
+// the character, not rebuild the machine. The serial does that.
+function asJson(character, serial) {
+  const abilities = {};
+  ABILITIES.forEach((ability) => {
+    const proficient = character.cls.saves.indexOf(ability) !== -1;
+    abilities[ability] = {
+      score: character.scores[ability],
+      modifier: character.mods[ability],
+      save: character.mods[ability] + (proficient ? PROFICIENCY_BONUS : 0),
+      proficientSave: proficient,
+      backgroundBoost: character.boosts[ability] || 0,
+    };
+  });
+
+  const passive = (id) =>
+    10 +
+    skillBonus(
+      character,
+      SKILLS.find((skill) => skill.id === id),
+    );
+
+  return {
+    serial: serial,
+    generator: "cg-20",
+    rules: "SRD 5.2.1, © Wizards of the Coast LLC, CC BY 4.0",
+    name: character.name,
+    level: 1,
+    alignment: character.alignment,
+    species: {
+      name: character.species.name,
+      lineage: character.lineage ? character.lineage.name : null,
+      size: character.size,
+      speed: character.speed,
+    },
+    class: {
+      name: character.cls.name,
+      subclass: character.cls.subclass,
+      hitDie: "1d" + character.cls.hitDie,
+    },
+    background: {
+      name: character.background.name,
+      tool: character.background.tool,
+    },
+    proficiencyBonus: PROFICIENCY_BONUS,
+    abilities: abilities,
+    combat: {
+      armorClass: character.armorClass,
+      hitPoints: character.maxHp,
+      initiative: character.initiative,
+      heroicInspiration: character.heroicInspiration,
+      passivePerception: passive("perception"),
+      passiveInsight: passive("insight"),
+      passiveInvestigation: passive("investigation"),
+    },
+    // Every skill, with what is true of it -- a consumer that only wants
+    // the trained ones can filter, but one that wants the modifiers can
+    // only get them from here.
+    skills: SKILLS.map((skill) => ({
+      name: skill.name,
+      ability: skill.ability,
+      modifier: skillBonus(character, skill),
+      proficient: character.skills.indexOf(skill.name) !== -1,
+      expertise: character.expertise.indexOf(skill.name) !== -1,
+    })),
+    attacks: character.attacks,
+    equipment: character.equipment,
+    gold: character.gold,
+    features: {
+      class: character.cls.features.concat(
+        "Subclass: " + character.cls.subclass,
+      ),
+      species: character.traits,
+      feats: character.feats,
+    },
+    training: {
+      armor: character.cls.armorTraining,
+      weapons: character.cls.weaponTraining,
+      tools: character.cls.toolTraining,
+      languages: character.languages,
+    },
+    spellcasting: character.spellcasting
+      ? {
+          label: character.spellcasting.label,
+          ability: character.spellcasting.ability,
+          saveDc: character.spellcasting.dc,
+          attackBonus: character.spellcasting.attack,
+          level1Slots: character.spellcasting.slots,
+          cantrips: character.spellcasting.cantrips,
+          prepared: character.spellcasting.prepared,
+        }
+      : null,
+  };
+}
+
+function exportJson() {
+  const character = buildCharacter(state);
+  const serial = serialOf(state);
+
+  downloadFile(
+    new Blob([JSON.stringify(asJson(character, serial), null, 2)], {
+      type: "application/json",
+    }),
+    exportName(character, serial, "json"),
+  );
+  status("sheet exported as JSON");
 }
 
 /* ---------------------------------------------------------
@@ -3430,7 +3549,8 @@ function wireControls() {
   byId("midi-connect").addEventListener("click", connectMidi);
 
   byId("copy").addEventListener("click", copySheet);
-  byId("export").addEventListener("click", exportSheet);
+  byId("export-pdf").addEventListener("click", exportSheet);
+  byId("export-json").addEventListener("click", exportJson);
 
   // One shortcut, and only when nothing else wants the key.
   document.addEventListener("keydown", (event) => {

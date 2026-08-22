@@ -957,12 +957,14 @@
   min-height: 58px;
 }
 
-/* Two keys sharing one key's footprint, the way a panel splits a wide
-   button when it grows a second function. */
-.key-pair {
+/* A row of keys that share one key's footprint, the way a panel splits a
+   wide button when it grows a second function. auto-fit rather than a
+   fixed count, so a fourth way out of the machine would need no new CSS. */
+.key-row {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
   gap: 0.5rem;
+  margin-bottom: 0.2rem;
 }
 
 .unit__serial {
