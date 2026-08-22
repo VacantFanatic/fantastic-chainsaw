@@ -2,38 +2,49 @@
    CG–20 — page-local tokens.
 
    This piece deliberately ignores the site's paper/ink palette and
-   builds its own: a plastic front panel, an orange key, a small
-   black display. Shared tokens still supply the type stacks.
+   builds its own, sampled off the teenage engineering EP–1320:
+   bone panel, oxblood ink, one signal red, a small black display.
+   Shared tokens still supply the mono stack.
+
+   Contrast, measured against the surface each colour actually sits
+   on: --signal is a *fill* only (4.0:1 on --panel, fails AA), and
+   --signal-text is its darker cut for type (5.1:1). --rule is a
+   border colour at 1.3:1 and must never carry text. Same split as
+   --phosphor-dim / --phosphor-line in the shared sheet.
    --------------------------------------------------------- */
 :root {
-  --bone: #f4f2ec;
-  --panel: #e4e1d7;
-  --panel-sunk: #d6d2c5;
-  --panel-edge: #c6c1b1;
-  --card: #fbfaf7;
+  --bone: #dcd8cf;
+  --panel: #d2cdc2;
+  --panel-sunk: #c9c6bf;
+  --panel-edge: #bab496;
+  --card: #e7e4dc;
 
-  --ink: #17171a;
-  --ink-soft: #55545a;
-  --rule: #cdc9bd;
-  --rule-strong: #a29d8f;
+  --ink: #000000;
+  --ink-soft: #3e1815;
+  --rule: #bab496;
+  --rule-strong: #231f20;
 
-  --orange: #ff4b00;
-  --orange-edge: #c43d00;
-  /* Orange as *text* only in this darker cut: 5.1:1 on the panel. The
+  --signal: #b22e20;
+  --signal-edge: #7d1f16;
+  /* Red as *text* only in this darker cut: 5.1:1 on the panel. The
      bright one is for fills, keys, and indicator dots. */
-  --orange-text: #a83400;
+  --signal-text: #96261a;
 
-  --screen: #12120f;
-  --screen-fg: #ff6a1f;
-  --screen-dim: #8d867a;
+  --screen: #0f0e12;
+  --screen-fg: #ff9d2f;
+  --screen-dim: #c98b3f;
   --scanline: rgba(0, 0, 0, 0.35);
-  --shadow: rgba(23, 23, 26, 0.35);
+  --shadow: rgba(35, 31, 32, 0.4);
 
-  --key-face: #f7f6f2;
-  --key-edge: #b6b1a3;
+  --key-face: #e7e4dc;
+  --key-edge: #bab496;
 
-  --sans: "Helvetica Neue", Helvetica, Arial, "Liberation Sans", sans-serif;
+  --sans: "Space Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --script: "UnifrakturMaguntia", var(--serif);
+
+  /* EP–1320 draws its frame in one heavy weight and everything
+     inside it in one hairline. Nothing in between. */
+  --frame: 3px;
 }
 
 .page-forge {
@@ -57,14 +68,14 @@
 }
 
 .page-forge a {
-  color: var(--orange-text);
+  color: var(--signal-text);
 }
 
 .page-forge a:focus-visible,
 .page-forge button:focus-visible,
 .page-forge input:focus-visible,
 .dip input:focus-visible + .dip__slot {
-  outline: 2px solid var(--orange-text);
+  outline: 2px solid var(--signal-text);
   outline-offset: 2px;
 }
 
@@ -79,7 +90,6 @@
   padding: 0.7rem 1.25rem;
   border-bottom: 1px solid var(--rule);
   font-size: 0.7rem;
-  letter-spacing: 0.06em;
 }
 
 .topbar__back {
@@ -93,7 +103,6 @@
 
 .topbar__site {
   font-family: var(--mono);
-  letter-spacing: 0.24em;
 }
 
 .hero {
@@ -121,7 +130,7 @@
   font-family: var(--script);
   font-weight: 400;
   letter-spacing: 0;
-  color: var(--orange-text);
+  color: var(--signal-text);
   display: inline-block;
 }
 
@@ -148,7 +157,6 @@
 
 .specs__row dt {
   color: var(--ink-soft);
-  letter-spacing: 0.04em;
 }
 
 .specs__row dd {
@@ -168,8 +176,8 @@
   max-width: 78rem;
   margin: 0 auto;
   background: var(--panel);
-  border: 1px solid var(--panel-edge);
-  border-radius: 6px;
+  border: var(--frame) solid var(--rule-strong);
+  border-radius: 4px;
   padding: 1.1rem;
   box-shadow: 0 24px 40px -34px var(--shadow);
 }
@@ -187,7 +195,6 @@
 .unit__title {
   margin: 0;
   font-size: 0.7rem;
-  letter-spacing: 0.16em;
   text-transform: uppercase;
   color: var(--ink-soft);
   font-weight: 400;
@@ -205,7 +212,7 @@
 .unit__display {
   position: relative;
   background: var(--screen);
-  border-radius: 3px;
+  border-radius: 4px;
   padding: 0.9rem 1rem;
   overflow: hidden;
   font-family: var(--mono);
@@ -228,7 +235,6 @@
   color: var(--screen-fg);
   font-size: clamp(1rem, 3.4vw, 1.6rem);
   font-weight: 700;
-  letter-spacing: 0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -257,7 +263,6 @@
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.55rem;
-  letter-spacing: 0.08em;
   color: var(--screen-dim);
   text-align: center;
 }
@@ -298,11 +303,10 @@
 .key {
   font-family: var(--sans);
   font-size: 0.7rem;
-  letter-spacing: 0.02em;
   color: var(--ink);
   background: var(--key-face);
   border: 1px solid var(--key-edge);
-  border-radius: 3px;
+  border-radius: 4px;
   box-shadow: 0 2px 0 var(--key-edge);
   padding: 0.5rem 0.6rem;
   min-height: 44px;
@@ -331,9 +335,10 @@
 }
 
 .key--master {
-  background: var(--orange);
-  border-color: var(--orange-edge);
-  box-shadow: 0 3px 0 var(--orange-edge);
+  background: var(--signal);
+  border-color: var(--signal-edge);
+  color: var(--card);
+  box-shadow: 0 3px 0 var(--signal-edge);
   min-width: 9.5rem;
   min-height: 96px;
   justify-content: flex-end;
@@ -346,7 +351,7 @@
 }
 
 .key--master .key__sub {
-  color: var(--ink);
+  color: var(--card);
 }
 
 .channels {
@@ -386,7 +391,7 @@
 }
 
 .channel:has(input:checked) .key::after {
-  background: var(--orange);
+  background: var(--signal);
 }
 
 .dip {
@@ -395,7 +400,6 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.6rem;
-  letter-spacing: 0.06em;
   color: var(--ink-soft);
   cursor: pointer;
 }
@@ -431,11 +435,11 @@
 
 .dip input:checked + .dip__slot::after {
   transform: translateY(11px);
-  background: var(--orange);
+  background: var(--signal);
 }
 
 .dip input:checked ~ .dip__label {
-  color: var(--orange-text);
+  color: var(--signal-text);
   font-weight: 700;
 }
 
@@ -455,7 +459,6 @@
 
 .mode legend {
   font-size: 0.6rem;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
   padding: 0 0.3rem;
@@ -471,7 +474,7 @@
 }
 
 .mode__opt input {
-  accent-color: var(--orange);
+  accent-color: var(--signal);
 }
 
 .key--wide {
@@ -493,7 +496,6 @@
 
 .unit__serial code {
   color: var(--ink);
-  letter-spacing: 0.06em;
 }
 
 .unit__note {
@@ -502,7 +504,7 @@
 }
 
 .unit__note b {
-  color: var(--orange-text);
+  color: var(--signal-text);
 }
 
 .unit__note kbd {
@@ -539,7 +541,6 @@
 
 .field__label {
   font-size: 0.58rem;
-  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -585,16 +586,14 @@
   border-bottom: 1px solid var(--rule);
   font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--orange-text);
+  color: var(--signal-text);
 }
 
 .block__title {
   margin: 1.2rem 0 0.5rem;
   font-size: 0.58rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -620,7 +619,6 @@
 .abil__name {
   flex: 1 1 auto;
   font-size: 0.6rem;
-  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -635,7 +633,6 @@
 .abil__score {
   font-size: 0.6rem;
   color: var(--ink-soft);
-  letter-spacing: 0.06em;
 }
 
 .abil__score b {
@@ -647,8 +644,7 @@
 .abil__boost {
   margin: 0.35rem 0 0;
   font-size: 0.58rem;
-  letter-spacing: 0.06em;
-  color: var(--orange-text);
+  color: var(--signal-text);
 }
 
 .abil__boost:empty {
@@ -678,14 +674,14 @@
 }
 
 .check.is-proficient .check__dot {
-  background: var(--orange);
-  border-color: var(--orange-edge);
+  background: var(--signal);
+  border-color: var(--signal-edge);
 }
 
 .check.is-expert .check__dot {
   box-shadow:
     0 0 0 2px var(--card),
-    0 0 0 3px var(--orange-edge);
+    0 0 0 3px var(--signal-edge);
 }
 
 .check__name {
@@ -721,7 +717,6 @@
 
 .box__label {
   font-size: 0.55rem;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -761,7 +756,7 @@
 }
 
 .pips i {
-  border-color: var(--orange-edge);
+  border-color: var(--signal-edge);
 }
 
 .passives {
@@ -783,7 +778,6 @@
 
 .passive__label {
   font-size: 0.52rem;
-  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
@@ -813,7 +807,6 @@
 
 .attacks thead th {
   font-size: 0.52rem;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
   font-weight: 400;
@@ -849,7 +842,6 @@
 .coin {
   margin: 0.7rem 0 0;
   font-size: 0.6rem;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }

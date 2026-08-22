@@ -89,7 +89,7 @@ const SPECIES = [
     size: ["Medium"],
     speed: 30,
     traits: [
-      "Breath Weapon — 2d6 damage in a Cone or Line, PB times per Long Rest",
+      "Breath Weapon — 1d10 damage in a 15 ft. Cone or 30 ft. Line, PB times per Long Rest",
       "Damage Resistance — to your ancestry's damage type",
       "Darkvision 60 ft.",
       "Draconic Flight — at level 5",
@@ -97,16 +97,16 @@ const SPECIES = [
     lineage: {
       label: "Draconic Ancestry",
       options: [
-        { name: "Black", note: "Acid damage, 30 ft. Line" },
-        { name: "Blue", note: "Lightning damage, 30 ft. Line" },
-        { name: "Brass", note: "Fire damage, 30 ft. Line" },
-        { name: "Bronze", note: "Lightning damage, 30 ft. Line" },
-        { name: "Copper", note: "Acid damage, 30 ft. Line" },
-        { name: "Gold", note: "Fire damage, 15 ft. Cone" },
-        { name: "Green", note: "Poison damage, 15 ft. Cone" },
-        { name: "Red", note: "Fire damage, 15 ft. Cone" },
-        { name: "Silver", note: "Cold damage, 15 ft. Cone" },
-        { name: "White", note: "Cold damage, 15 ft. Cone" },
+        { name: "Black", note: "Acid damage" },
+        { name: "Blue", note: "Lightning damage" },
+        { name: "Brass", note: "Fire damage" },
+        { name: "Bronze", note: "Lightning damage" },
+        { name: "Copper", note: "Acid damage" },
+        { name: "Gold", note: "Fire damage" },
+        { name: "Green", note: "Poison damage" },
+        { name: "Red", note: "Fire damage" },
+        { name: "Silver", note: "Cold damage" },
+        { name: "White", note: "Cold damage" },
       ],
     },
   },
@@ -353,7 +353,7 @@ const CLASSES = [
     ],
     subclass: "Circle of the Land",
     features: ["Spellcasting", "Druidic", "Primal Order"],
-    armorTraining: "Light armor, Shields (nonmetal)",
+    armorTraining: "Light armor, Shields",
     weaponTraining: "Simple weapons",
     toolTraining: "Herbalism Kit",
     kit: {
@@ -498,7 +498,12 @@ const CLASSES = [
       armor: "Studded Leather Armor",
       shield: false,
       weapons: ["Scimitar", "Shortsword", "Longbow"],
-      gear: ["20 Arrows", "Quiver", "Druidic Focus", "Explorer's Pack"],
+      gear: [
+        "20 Arrows",
+        "Quiver",
+        "Druidic Focus (sprig of mistletoe)",
+        "Explorer's Pack",
+      ],
       gp: 7,
     },
     casting: { ability: "wis", cantrips: 0, prepared: 2, slots: 2 },
@@ -619,6 +624,7 @@ const CLASSES = [
       "Insight",
       "Investigation",
       "Medicine",
+      "Nature",
       "Religion",
     ],
     subclass: "Evoker",
@@ -836,7 +842,7 @@ const WEAPONS = {
     mastery: "Vex",
   },
   Sickle: {
-    dice: "1d6",
+    dice: "1d4",
     type: "Slashing",
     props: "Light",
     mastery: "Nick",
@@ -862,7 +868,6 @@ const ARMOR = {
 
 const CANTRIPS = {
   "Acid Splash": { dice: "1d6", type: "Acid", mode: "Dex save" },
-  "Blade Ward": {},
   "Chill Touch": { dice: "1d10", type: "Necrotic", mode: "Melee spell attack" },
   "Dancing Lights": {},
   Druidcraft: {},
@@ -892,7 +897,6 @@ const CANTRIPS = {
   },
   "Spare the Dying": {},
   Thaumaturgy: {},
-  "Thorn Whip": { dice: "1d6", type: "Piercing", mode: "Melee spell attack" },
   "True Strike": { dice: "weapon", type: "—", mode: "Weapon attack" },
   "Vicious Mockery": { dice: "1d6", type: "Psychic", mode: "Wis save" },
 };
@@ -900,7 +904,6 @@ const CANTRIPS = {
 const SPELL_LISTS = {
   bard: {
     cantrips: [
-      "Blade Ward",
       "Dancing Lights",
       "Light",
       "Mage Hand",
@@ -966,7 +969,6 @@ const SPELL_LISTS = {
       "Produce Flame",
       "Resistance",
       "Shillelagh",
-      "Thorn Whip",
     ],
     first: [
       "Animal Friendship",
@@ -999,8 +1001,6 @@ const SPELL_LISTS = {
       "Purify Food and Drink",
       "Searing Smite",
       "Shield of Faith",
-      "Thunderous Smite",
-      "Wrathful Smite",
     ],
   },
   ranger: {
@@ -1014,7 +1014,6 @@ const SPELL_LISTS = {
       "Entangle",
       "Fog Cloud",
       "Goodberry",
-      "Hail of Thorns",
       "Jump",
       "Longstrider",
       "Speak with Animals",
@@ -1055,12 +1054,10 @@ const SPELL_LISTS = {
       "Silent Image",
       "Sleep",
       "Thunderwave",
-      "Witch Bolt",
     ],
   },
   warlock: {
     cantrips: [
-      "Blade Ward",
       "Chill Touch",
       "Eldritch Blast",
       "Mage Hand",
@@ -1070,8 +1067,6 @@ const SPELL_LISTS = {
       "True Strike",
     ],
     first: [
-      "Armor of Agathys",
-      "Arms of Hadar",
       "Charm Person",
       "Comprehend Languages",
       "Expeditious Retreat",
@@ -1079,7 +1074,6 @@ const SPELL_LISTS = {
       "Hex",
       "Protection from Evil and Good",
       "Unseen Servant",
-      "Witch Bolt",
     ],
   },
   wizard: {
@@ -1124,7 +1118,6 @@ const SPELL_LISTS = {
       "Sleep",
       "Thunderwave",
       "Unseen Servant",
-      "Witch Bolt",
     ],
   },
 };
