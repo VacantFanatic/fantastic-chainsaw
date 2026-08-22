@@ -34,8 +34,10 @@ site/
    it, and remove the `entry--placeholder` class once it's real.
 4. Format before committing:
    ```
-   npx prettier --write "**/*.{html,css,js}"
+   npx prettier@3.9.6 --write "**/*.{html,css,js,json,md}"
    ```
+   CI runs the same command with `--check`, pinned to the same version,
+   so running this is always enough to make it pass.
 
 ## Local preview
 

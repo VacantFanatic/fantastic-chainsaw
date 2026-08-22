@@ -1,0 +1,49 @@
+name: CI
+
+# Runs on every pull request, and on main as a backstop for anything that
+# lands directly. The repo is private on a free plan, so main cannot be
+# protected server-side yet -- see "Repo hygiene" in NOTES.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to a PR makes the previous run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: format, links, no build step
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      # Pinned deliberately. There is no package.json to lock a version in,
+      # so an unpinned `npx prettier` would let a new upstream release change
+      # the formatting rules and turn CI red with no commit behind it. Keep
+      # this in step with the version named in README.md.
+      - name: Check formatting
+        run: npx --yes prettier@3.9.6 --check "**/*.{html,css,js,json,md}"
+
+      - name: Check local links resolve
+        run: node .github/scripts/check-links.mjs
+
+      # The no-build-step, no-runtime-dependency rule is the point of the
+      # project (see CLAUDE.md), not a temporary state. It is easy to erode by
+      # accident, so it is asserted rather than trusted.
+      - name: Check the site still needs no build step
+        run: |
+          fail() { echo "::error::$1"; exit 1; }
+          [ ! -e package.json ] || fail "package.json appeared -- this site is meant to run with no build step and no install"
+          [ ! -e node_modules ] || fail "node_modules is committed -- it should be ignored, not tracked"
+          [ -f index.html ] || fail "index.html is missing -- opening it directly is the whole distribution model"
