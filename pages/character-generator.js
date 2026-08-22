@@ -1425,28 +1425,57 @@ function signed(value) {
   return (value >= 0 ? "+" : "−") + Math.abs(value);
 }
 
-function buildName(rng, speciesId) {
+// How ornamented a name is allowed to be. Weathered is the machine's old
+// hard-coded 0.28, and stays the default so every serial minted before
+// the knob existed still spells the same name.
+const FLOURISHES = [
+  { id: "plain", chance: 0, label: "plain" },
+  { id: "weathered", chance: 0.28, label: "weathered" },
+  { id: "baroque", chance: 0.6, label: "baroque" },
+];
+const FLOURISH_DEFAULT = 1;
+
+function flourishFor(id) {
+  return (
+    FLOURISHES.find((entry) => entry.id === id) || FLOURISHES[FLOURISH_DEFAULT]
+  );
+}
+
+function buildName(rng, speciesId, flourishId) {
   const bank = NAME_BANKS[speciesId];
   const given = pick(rng, bank.given[0]) + pick(rng, bank.given[1]);
   const family = bank.family[1]
     ? pick(rng, bank.family[0]) + pick(rng, bank.family[1])
     : pick(rng, bank.family[0]);
   const name = given + " " + family;
-  return rng() < 0.28 ? name + ", " + pick(rng, EPITHETS) : name;
+  const chance = flourishFor(flourishId).chance;
+  return rng() < chance ? name + ", " + pick(rng, EPITHETS) : name;
 }
+
+// Four detents on one knob, from prudent to reckless. Each method draws a
+// different number of dice from the stream, which is fine: the method is
+// in the serial, so a (seed, method) pair is still deterministic.
+const METHOD_LETTERS = { array: "A", gritty: "G", dice: "R", heroic: "H" };
 
 function rollAbilityScores(rng, method) {
   if (method === "array") return STANDARD_ARRAY.slice();
 
+  // heroic is 4d6 drop lowest with each 1 rerolled once -- the reroll
+  // happens per die, in draw order, so the stream stays stable.
+  const die = () => {
+    let value = rollDie(rng, 6);
+    if (method === "heroic" && value === 1) value = rollDie(rng, 6);
+    return value;
+  };
+
   const scores = [];
   for (let i = 0; i < 6; i += 1) {
-    const dice = [
-      rollDie(rng, 6),
-      rollDie(rng, 6),
-      rollDie(rng, 6),
-      rollDie(rng, 6),
-    ].sort((a, b) => b - a);
-    scores.push(dice[0] + dice[1] + dice[2]);
+    if (method === "gritty") {
+      scores.push(die() + die() + die());
+    } else {
+      const dice = [die(), die(), die(), die()].sort((a, b) => b - a);
+      scores.push(dice[0] + dice[1] + dice[2]);
+    }
   }
   return scores.sort((a, b) => b - a);
 }
@@ -1588,7 +1617,7 @@ function buildCharacter(state) {
   // rides in the serial (see serialOf), so the link still rebuilds this.
   const namedFor = state.nameSpecies || species.id;
   const nameRng = makeRng("name/" + state.seeds.name + "/" + namedFor);
-  const name = buildName(nameRng, namedFor);
+  const name = buildName(nameRng, namedFor, state.flourish);
 
   const pool = rollAbilityScores(statsRng, state.method);
   const boosted = applyBackgroundBoosts(
@@ -1772,8 +1801,13 @@ function syncLamps() {
   setLamp("aux", state.cartridge !== CARTRIDGES[0].id);
   setLamp("midi", midiState.connected);
 
-  setLamp("method-array", state.method === "array");
-  setLamp("method-dice", state.method === "dice");
+  Object.keys(METHOD_LETTERS).forEach((method) => {
+    setLamp("method-" + method, state.method === method);
+  });
+
+  const flourish = flourishFor(state.flourish);
+  setLamp("flourish", flourish.id !== FLOURISHES[FLOURISH_DEFAULT].id);
+  setText("lamp-flourish", flourish.label);
 
   // Generic is the absence of a setting rather than one of them, so its
   // lamp reads as off -- the same rule the serial follows.
@@ -1902,6 +1936,18 @@ function renderSpells(character) {
   fillList("prepared", casting.prepared);
 }
 
+// Just the LCD: name line, build line, bars. Split out of render so the
+// audition key can flash a phantom character on the display without the
+// sheet, the serial, or the address bar hearing about it.
+function renderDisplay(character) {
+  setText("lcd-name", character.name);
+  setText(
+    "lcd-build",
+    character.species.name + " " + character.cls.name + " · level 1",
+  );
+  setBars(character.scores);
+}
+
 function render(character) {
   setText("sheet-name", character.name);
   setText("sheet-class", character.cls.name);
@@ -1960,12 +2006,7 @@ function render(character) {
 
   renderSpells(character);
 
-  setText("lcd-name", character.name);
-  setText(
-    "lcd-build",
-    character.species.name + " " + character.cls.name + " · level 1",
-  );
-  setBars(character.scores);
+  renderDisplay(character);
 
   setText(
     "announce",
@@ -2785,6 +2826,7 @@ const state = {
   method: "array",
   setting: "generic",
   cartridge: "none",
+  flourish: FLOURISHES[FLOURISH_DEFAULT].id,
   // 1 is the machine on its own. Above that it is describing a party, and
   // every member past the first is derived from this serial.
   party: 1,
@@ -2803,7 +2845,7 @@ CHANNELS.forEach((channel) => {
 
 function serialOf(current) {
   const groups = CHANNELS.map((channel) => current.seeds[channel]);
-  groups.push(current.method === "array" ? "A" : "R");
+  groups.push(METHOD_LETTERS[current.method]);
   // Generic adds no group. That keeps every serial minted before settings
   // existed byte-identical, so old links are not quietly invalidated.
   const setting = settingFor(current.setting);
@@ -2821,6 +2863,13 @@ function serialOf(current) {
     (entry) => entry.id === current.cartridge,
   );
   if (cartridge > 0) groups.push("X" + cartridge);
+
+  const flourish = FLOURISHES.findIndex(
+    (entry) => entry.id === current.flourish,
+  );
+  if (flourish !== FLOURISH_DEFAULT && flourish !== -1) {
+    groups.push("F" + flourish);
+  }
 
   const pinned = current.nameSpecies;
   if (
@@ -2849,17 +2898,26 @@ const SERIAL_TAIL = {
     key: "nameSpecies",
     read: (value) => (SPECIES[value] ? SPECIES[value].id : null),
   },
+  F: {
+    key: "flourish",
+    read: (value) => (FLOURISHES[value] ? FLOURISHES[value].id : null),
+  },
 };
 
 function parseSerial(text) {
   const groups = text.replace(/^#/, "").toUpperCase().split("-");
   const withMethod = CHANNELS.length + 1;
 
-  const tail = { party: 1, cartridge: CARTRIDGES[0].id, nameSpecies: null };
+  const tail = {
+    party: 1,
+    cartridge: CARTRIDGES[0].id,
+    nameSpecies: null,
+    flourish: FLOURISHES[FLOURISH_DEFAULT].id,
+  };
   const seen = {};
 
   while (groups.length) {
-    const match = /^([PXN])(\d{1,2})$/.exec(groups[groups.length - 1]);
+    const match = /^([PXNF])(\d{1,2})$/.exec(groups[groups.length - 1]);
     if (!match) break;
 
     const entry = SERIAL_TAIL[match[1]];
@@ -2886,7 +2944,10 @@ function parseSerial(text) {
   }
 
   const methodGroup = groups.pop();
-  if (methodGroup !== "A" && methodGroup !== "R") return null;
+  const method = Object.keys(METHOD_LETTERS).find(
+    (key) => METHOD_LETTERS[key] === methodGroup,
+  );
+  if (!method) return null;
   if (!groups.every((group) => /^[A-Z0-9]{4}$/.test(group))) return null;
 
   const seeds = {};
@@ -2895,11 +2956,12 @@ function parseSerial(text) {
   });
   return {
     seeds: seeds,
-    method: methodGroup === "A" ? "array" : "dice",
+    method: method,
     setting: setting,
     cartridge: tail.cartridge,
     party: tail.party,
     nameSpecies: tail.nameSpecies,
+    flourish: tail.flourish,
   };
 }
 
@@ -2925,10 +2987,66 @@ function scramble(length) {
   return text;
 }
 
+/* ---------------------------------------------------------
+   Takes -- the machine remembers its last rolls
+
+   Sixteen serials in memory, nowhere else: stepping back through takes
+   is just loading old serials, so it costs the format nothing. A serial
+   arriving by hash starts a fresh reel -- a pasted link is a new
+   session, not a continuation of this one.
+   --------------------------------------------------------- */
+
+const TAKE_LIMIT = 16;
+const takes = { list: [], index: -1, stepping: false };
+
+function recordTake(serial) {
+  if (takes.stepping) return;
+  if (takes.list[takes.index] === serial) return;
+
+  // A new take after stepping back discards the future, like recording
+  // over tape.
+  takes.list = takes.list.slice(0, takes.index + 1);
+  takes.list.push(serial);
+  if (takes.list.length > TAKE_LIMIT) takes.list.shift();
+  takes.index = takes.list.length - 1;
+  syncTakeReadout();
+}
+
+function resetTakes() {
+  takes.list = [];
+  takes.index = -1;
+}
+
+function syncTakeReadout() {
+  setText("lcd-take", "tk " + (takes.index + 1) + "/" + takes.list.length);
+}
+
+function stepTake(delta) {
+  const target = takes.index + delta;
+  if (target < 0) {
+    status("no earlier take");
+    return;
+  }
+  if (target >= takes.list.length) {
+    status("no later take");
+    return;
+  }
+
+  takes.stepping = true;
+  applySerial(parseSerial(takes.list[target]));
+  takes.index = target;
+  commit(false);
+  takes.stepping = false;
+
+  syncTakeReadout();
+  status("take " + (target + 1) + " of " + takes.list.length);
+}
+
 function commit(animated) {
   const character = buildCharacter(state);
   const serial = serialOf(state);
 
+  recordTake(serial);
   syncLamps();
   syncPorts();
   renderParty();
@@ -3018,6 +3136,7 @@ function partyMember(current, index) {
     method: current.method,
     setting: current.setting,
     cartridge: current.cartridge,
+    flourish: current.flourish,
     party: 1,
     // A derived member was never held, so it has nothing pinned.
     nameSpecies: index === 1 ? current.nameSpecies : null,
@@ -3463,24 +3582,204 @@ function wireCartridge() {
   setText("cartridge-note", cartridgeFor(state.cartridge).note);
 }
 
+function wireFlourish() {
+  document.querySelectorAll('[name="flourish"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      state.flourish = radio.value;
+      syncKnob("flourish");
+      status(flourishFor(state.flourish).label + " names");
+      // The knob changes what the name seed produces, so the name on the
+      // sheet really can change -- that is a re-commit, not a re-skin.
+      commit(true);
+    });
+  });
+
+  wireKnob("flourish");
+  syncKnob("flourish");
+}
+
 function wireParty() {
   const size = byId("party-size");
   if (!size) return;
 
-  size.addEventListener("change", () => {
-    const wanted = Math.round(Number(size.value));
-    const clamped = Math.max(1, Math.min(PARTY_MAX, wanted || 1));
-    size.value = String(clamped);
+  const readout = byId("party-readout");
+  const describe = (n) => (n > 1 ? "party of " + n : "solo");
+
+  size.addEventListener("input", () => {
+    const clamped = Math.max(1, Math.min(PARTY_MAX, Number(size.value) || 1));
     state.party = clamped;
-    status(clamped > 1 ? "party of " + clamped : "party released");
+    if (readout) readout.textContent = describe(clamped);
+    size.setAttribute("aria-valuetext", describe(clamped));
+    status(describe(clamped));
     // The character on the sheet does not change when the party grows --
     // it is member one either way -- so nothing here is re-rolled.
     commit(false);
   });
+  size.setAttribute("aria-valuetext", describe(state.party));
+}
+
+/* ---------------------------------------------------------
+   Audition -- hold to preview, roll to keep
+
+   A momentary key, the most pocket-operator gesture there is: while it
+   is down the display shows a phantom roll of the open channels, and
+   nothing else on the page knows. Release discards it; pressing roll
+   (or r) while holding keeps it.
+   --------------------------------------------------------- */
+
+let audition = null;
+
+function startAudition() {
+  if (audition) return;
+
+  const open = CHANNELS.filter((channel) => !state.holds[channel]);
+  if (open.length === 0) {
+    status("all channels held");
+    return;
+  }
+
+  const seeds = Object.assign({}, state.seeds);
+  open.forEach((channel) => {
+    seeds[channel] = randomSeed();
+  });
+
+  audition = { seeds: seeds, open: open };
+  renderDisplay(buildCharacter(Object.assign({}, state, { seeds: seeds })));
+  byId("audition").setAttribute("aria-pressed", "true");
+  status("auditioning — release to discard, roll to keep");
+}
+
+function endAudition() {
+  if (!audition) return;
+  audition = null;
+  renderDisplay(buildCharacter(state));
+  byId("audition").setAttribute("aria-pressed", "false");
+  status("audition discarded");
+}
+
+function keepAudition() {
+  const held = audition;
+  audition = null;
+  byId("audition").setAttribute("aria-pressed", "false");
+
+  pinNameFor(held.open);
+  held.open.forEach((channel) => {
+    state.seeds[channel] = held.seeds[channel];
+  });
+  status("kept the audition");
+  commit(true);
+}
+
+function wireAudition() {
+  const key = byId("audition");
+  key.addEventListener("pointerdown", startAudition);
+  key.addEventListener("pointerup", endAudition);
+  key.addEventListener("pointerleave", endAudition);
+  key.addEventListener("pointercancel", endAudition);
+
+  // Space held down is the keyboard version of a held key. keydown
+  // repeats while held; startAudition already ignores the repeats.
+  key.addEventListener("keydown", (event) => {
+    if (event.key !== " " && event.key !== "Enter") return;
+    event.preventDefault();
+    startAudition();
+  });
+  key.addEventListener("keyup", (event) => {
+    if (event.key !== " " && event.key !== "Enter") return;
+    event.preventDefault();
+    endAudition();
+  });
+}
+
+/* ---------------------------------------------------------
+   Transport -- the machine rolls itself
+
+   A latching play key and a three-detent tempo knob. Every tick rolls
+   the open channels through the same path a hand-roll takes, so each
+   one commits a real serial and lands on the take reel. Reduced motion
+   turns the transport off entirely, and says so on the key.
+   --------------------------------------------------------- */
+
+const TEMPOS = { slow: 6000, medium: 3000, fast: 1500 };
+const transport = { timer: null, tempo: "medium" };
+
+function transportRunning() {
+  return transport.timer !== null;
+}
+
+function stopTransport(quiet) {
+  if (!transportRunning()) return;
+  window.clearInterval(transport.timer);
+  transport.timer = null;
+  byId("play").setAttribute("aria-pressed", "false");
+  if (!quiet) status("transport stopped");
+}
+
+function startTransport() {
+  if (prefersReducedMotion) {
+    status("transport off — reduced motion");
+    return;
+  }
+
+  window.clearInterval(transport.timer);
+  transport.timer = window.setInterval(() => {
+    const open = CHANNELS.filter((channel) => !state.holds[channel]);
+    if (open.length === 0) {
+      stopTransport();
+      status("all channels held — transport stopped");
+      return;
+    }
+    rollChannels(open, true);
+  }, TEMPOS[transport.tempo]);
+
+  byId("play").setAttribute("aria-pressed", "true");
+  status("transport running — " + transport.tempo);
+}
+
+function wireTransport() {
+  const play = byId("play");
+
+  if (prefersReducedMotion) {
+    play.disabled = true;
+    const sub = play.querySelector(".key__sub");
+    if (sub) sub.textContent = "off — reduced motion";
+  }
+
+  play.addEventListener("click", () => {
+    if (transportRunning()) {
+      stopTransport();
+    } else {
+      startTransport();
+    }
+  });
+
+  document.querySelectorAll('[name="tempo"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      transport.tempo = radio.value;
+      syncKnob("tempo");
+      status("tempo — " + radio.value);
+      // A new tempo takes hold immediately if the reel is running.
+      if (transportRunning()) startTransport();
+    });
+  });
+
+  wireKnob("tempo");
+  syncKnob("tempo");
 }
 
 function wireControls() {
   byId("roll").addEventListener("click", () => {
+    // Rolling while auditioning keeps the audition -- the phantom on the
+    // display is exactly what you are asking for.
+    if (audition) {
+      stopTransport(true);
+      keepAudition();
+      return;
+    }
+
+    stopTransport(true);
     const open = CHANNELS.filter((channel) => !state.holds[channel]);
     if (open.length === 0) {
       status("all channels held");
@@ -3490,8 +3789,30 @@ function wireControls() {
     rollChannels(open, true);
   });
 
+  byId("take-back").addEventListener("click", () => {
+    stopTransport(true);
+    stepTake(-1);
+  });
+  byId("take-forward").addEventListener("click", () => {
+    stopTransport(true);
+    stepTake(1);
+  });
+  wireAudition();
+  wireTransport();
+
+  // GLOW is a feel control and deliberately stateless: a reload is a
+  // power cycle, and the fader comes back up at its detent.
+  const glow = byId("glow");
+  if (glow) {
+    glow.addEventListener("input", () => {
+      const display = document.querySelector(".unit__display");
+      if (display) display.style.setProperty("--glow", glow.value / 100);
+    });
+  }
+
   document.querySelectorAll("[data-channel]").forEach((pad) => {
     pad.addEventListener("click", () => {
+      stopTransport(true);
       const channel = pad.getAttribute("data-channel");
       status("re-rolled " + channel);
       rollChannels([channel], true);
@@ -3545,6 +3866,7 @@ function wireControls() {
   wirePorts();
   wirePatchBay();
   wireCartridge();
+  wireFlourish();
   wireParty();
   byId("midi-connect").addEventListener("click", connectMidi);
 
@@ -3556,8 +3878,12 @@ function wireControls() {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "r" && event.key !== "R") return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
-    const tag = document.activeElement && document.activeElement.tagName;
-    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "BUTTON") return;
+    const active = document.activeElement;
+    const tag = active && active.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    // r on a focused button would double-fire -- except on the audition
+    // key, where r-while-holding is exactly how a keep is played.
+    if (tag === "BUTTON" && !(audition && active.id === "audition")) return;
     byId("roll").click();
   });
 }
@@ -3569,6 +3895,7 @@ function applySerial(parsed) {
   state.method = parsed.method;
   state.setting = parsed.setting;
   state.cartridge = parsed.cartridge;
+  state.flourish = parsed.flourish;
   state.party = parsed.party;
   state.nameSpecies = parsed.nameSpecies;
 
@@ -3576,12 +3903,17 @@ function applySerial(parsed) {
 
   const size = byId("party-size");
   if (size) size.value = String(state.party);
+  const readout = byId("party-readout");
+  if (readout) {
+    readout.textContent = state.party > 1 ? "party of " + state.party : "solo";
+  }
   setText("cartridge-note", cartridgeFor(state.cartridge).note);
 
   [
     ["method", state.method],
     ["setting", state.setting],
     ["cartridge", state.cartridge],
+    ["flourish", state.flourish],
   ].forEach((pair) => {
     const radio = document.querySelector(
       '[name="' + pair[0] + '"][value="' + pair[1] + '"]',
@@ -3611,6 +3943,11 @@ function wireHashChange() {
 
     if (serialOf(parsed) === serialOf(state)) return;
 
+    // A pasted link is a new session: the reel starts over and anything
+    // the machine was doing on its own stops.
+    stopTransport(true);
+    endAudition();
+    resetTakes();
     applySerial(parsed);
     status("loaded from serial");
     commit(true);

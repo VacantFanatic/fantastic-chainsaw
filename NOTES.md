@@ -440,6 +440,47 @@ in this browser`, or `needs https or localhost` rather than failing
   than a second background -- which the hairline was doing everywhere
   else on this panel anyway. All 22 text nodes across the four drawers
   were measured in all five skins.
+- **The tactile pass.** Six controls, one design rule: knobs for
+  choices, sliders for amounts, momentary keys for gestures, latching
+  keys for states -- and anything that changes what comes out of the
+  machine rides in the serial, while performance and feel controls
+  deliberately do not.
+  - **The scores knob has four detents now** -- standard array, 3d6
+    gritty, 4d6 drop lowest, and heroic (4d6, each 1 rerolled once).
+    The serial's method letter grew A/R -> A/G/R/H; old serials parse
+    unchanged. Different methods draw different dice counts from the
+    stream, which is fine because the method is in the serial.
+  - **A flourish knob sets how ornamented a name may be** -- plain,
+    weathered, baroque (epithet chance 0 / 0.28 / 0.6). Weathered is the
+    old hard-coded value and the default, so pre-knob serials spell the
+    same names. Off-default rides as a trailing `F<index>` group.
+  - **The machine keeps takes.** Sixteen serials in memory, nowhere
+    else; the take keys step back and forth, and a new roll after
+    stepping back records over the tape. A serial arriving by hash
+    starts a fresh reel. The LCD foot shows `tk n/m`.
+  - **Audition is a momentary key** -- hold to preview a phantom roll on
+    the display only (sheet, serial and address bar stay put), release
+    to discard, press roll (or r) while holding to keep. The r-shortcut
+    guard makes an exception for the held audition key on purpose.
+  - **A transport plays the machine** -- latching play, three-detent
+    tempo. Every tick rolls the open channels through the same path a
+    hand-roll takes, so each one is a real serial on the take reel. Any
+    manual roll stops the reel. Reduced motion disables the key and says
+    so on it.
+  - **Two faders** -- glow (scanline opacity against display brightness,
+    deliberately stateless: a reload is a power cycle) and the party
+    size, which stopped being a number input. One shared fader style:
+    rectangular caps, because circles are for knobs.
+  - **The display gained an operator.** Every pocket operator's LCD
+    keeps a little figure who works the machine; ours rattles a die in
+    the bright phosphor while the panel is busy, two frames on steps().
+    Reduced motion never starts the flip, so frame one just stands
+    there, which still reads as intended.
+  - One bug caught in verification: `applySerial` restored every tail
+    field except the new flourish, so a baroque link rebuilt a weathered
+    character. The radios were synced from state, which hid it -- the
+    fix is one line, and the lesson is the same as the name pin's:
+    every field the serial carries must round-trip through applySerial.
 
 Open items:
 

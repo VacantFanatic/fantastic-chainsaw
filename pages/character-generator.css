@@ -236,6 +236,11 @@
     padding-left: 0.9rem;
     padding-right: 0.9rem;
   }
+
+  .key--round {
+    width: 44px;
+    min-height: 44px;
+  }
 }
 
 .port--dead {
@@ -457,6 +462,92 @@
   cursor: pointer;
 }
 
+/* ---------------------------------------------------------
+   Faders
+
+   One slider style for every amount on the machine. The thumb is a
+   rectangular cap like a mixer fader, not a circle -- circles are for
+   knobs. Track and cap are drawn per engine; the colours all come off
+   the same tokens as the keys.
+   --------------------------------------------------------- */
+.fader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fader__label {
+  font-family: var(--mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 8.5rem;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+
+input[type="range"]:focus-visible {
+  outline: 2px solid var(--signal-text);
+  outline-offset: 2px;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--panel-sunk);
+  border: 1px solid var(--panel-edge);
+  border-radius: 2px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 20px;
+  margin-top: -9px;
+  border-radius: 2px;
+  background: var(--key-face);
+  border: 1px solid var(--rule-strong);
+  box-shadow: 0 2px 0 var(--key-edge);
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  background: var(--panel-sunk);
+  border: 1px solid var(--panel-edge);
+  border-radius: 2px;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 20px;
+  border-radius: 2px;
+  background: var(--key-face);
+  border: 1px solid var(--rule-strong);
+  box-shadow: 0 2px 0 var(--key-edge);
+}
+
+.bay__field--fader {
+  gap: 0.7rem;
+}
+
+.bay__field--fader input[type="range"] {
+  width: 11rem;
+}
+
+.bay__field--fader output {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  min-width: 6ch;
+}
+
 .unit__head {
   display: flex;
   align-items: center;
@@ -504,6 +595,14 @@
   min-width: 0;
 }
 
+/* GLOW rides in on a custom property: 0.5 is the machine's stock look,
+   up trades scanlines for brightness, down the reverse. The fader that
+   sets it lives in the head -- a control may not live inside this
+   aria-hidden display. */
+.unit__display {
+  filter: brightness(calc(0.88 + 0.24 * var(--glow, 0.5)));
+}
+
 .unit__display::after {
   content: "";
   position: absolute;
@@ -513,6 +612,7 @@
     var(--scanline) 0 1px,
     transparent 1px 3px
   );
+  opacity: calc(1.5 - var(--glow, 0.5));
   pointer-events: none;
 }
 
@@ -589,6 +689,51 @@
   flex-direction: column;
   gap: 0.1rem;
   min-width: 6.5rem;
+}
+
+/* The operator: a pocket-operator figure in --screen-dim, its die in
+   the bright phosphor. Two frames flip on steps() while the panel is
+   busy; reduced motion never starts the animation, so frame one just
+   stands there, which reads as intended. */
+.mascot {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 0.3rem;
+  fill: var(--screen-dim);
+}
+
+.mascot .mascot__die {
+  fill: var(--screen-fg);
+}
+
+.mascot__frame--b {
+  opacity: 0;
+}
+
+.is-busy .mascot__frame--a {
+  animation: mascot-flip 0.36s steps(1) infinite;
+}
+
+.is-busy .mascot__frame--b {
+  animation: mascot-flip 0.36s steps(1) infinite reverse;
+}
+
+@keyframes mascot-flip {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .is-busy .mascot__frame--a,
+  .is-busy .mascot__frame--b {
+    animation: none;
+  }
 }
 
 .lamps__head {
@@ -713,6 +858,65 @@
 
 .key--master .key__sub {
   color: var(--card);
+}
+
+/* ---------------------------------------------------------
+   Transport -- the pocket-operator corner
+
+   Round caps with the label printed on the panel under them, not on the
+   cap: the label survives the finger. play latches; the rest are
+   momentary.
+   --------------------------------------------------------- */
+.deck__left {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.transport {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.tkey {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.tkey__label {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+.key--round {
+  width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+}
+
+.key--round[aria-pressed="true"] {
+  background: var(--signal);
+  border-color: var(--signal-edge);
+  color: var(--card);
+  box-shadow: inset 0 2px 0 var(--signal-edge);
+  transform: translateY(1px);
+}
+
+.key--play:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mode--tempo {
+  max-width: 13rem;
 }
 
 .channels {
