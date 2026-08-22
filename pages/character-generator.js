@@ -1474,6 +1474,13 @@ function buildEquipment(cls, background) {
   return items;
 }
 
+// The species a seed produces, without rolling the rest of the character.
+// buildCharacter draws the same value as the first pick off its own
+// species stream -- these two have to agree, so they read the same.
+function speciesFor(seed) {
+  return pick(makeRng("species/" + seed), SPECIES);
+}
+
 function buildCharacter(state) {
   const speciesRng = makeRng("species/" + state.seeds.species);
   const classRng = makeRng("class/" + state.seeds.class);
@@ -1491,8 +1498,12 @@ function buildCharacter(state) {
   const background = pick(backgroundRng, BACKGROUNDS);
   const priority = ABILITY_PRIORITY[cls.id];
 
-  const nameRng = makeRng("name/" + state.seeds.name + "/" + species.id);
-  const name = buildName(nameRng, species.id);
+  // A held name keeps the species it was named for, so re-rolling species
+  // cannot quietly rename a character the panel says is held. The pin
+  // rides in the serial (see serialOf), so the link still rebuilds this.
+  const namedFor = state.nameSpecies || species.id;
+  const nameRng = makeRng("name/" + state.seeds.name + "/" + namedFor);
+  const name = buildName(nameRng, namedFor);
 
   const pool = rollAbilityScores(statsRng, state.method);
   const boosted = applyBackgroundBoosts(
@@ -1657,6 +1668,30 @@ function fillList(id, items) {
   });
 }
 
+// The lamp bank is a readout of the deck, not a second set of controls:
+// every lamp mirrors a switch that lives below it. Nothing here is
+// focusable, and the whole display is aria-hidden -- the spoken version of
+// this is the status line, which already announces each change.
+function setLamp(name, lit) {
+  const lamp = document.querySelector('[data-lamp="' + name + '"]');
+  if (lamp) lamp.classList.toggle("is-lit", lit);
+}
+
+function syncLamps() {
+  CHANNELS.forEach((channel) => {
+    setLamp("hold-" + channel, state.holds[channel]);
+  });
+
+  setLamp("method-array", state.method === "array");
+  setLamp("method-dice", state.method === "dice");
+
+  // Generic is the absence of a setting rather than one of them, so its
+  // lamp reads as off -- the same rule the serial follows.
+  const setting = settingFor(state.setting);
+  setLamp("setting", setting.id !== SETTINGS[0].id);
+  setText("lamp-setting", setting.label);
+}
+
 function setBars(values) {
   ABILITIES.forEach((ability) => {
     const bar = document.querySelector('[data-bar="' + ability + '"]');
@@ -1675,10 +1710,7 @@ function renderSkills(character) {
 
     const proficient = character.skills.indexOf(skill.name) !== -1;
     const expert = character.expertise.indexOf(skill.name) !== -1;
-    const bonus =
-      character.mods[skill.ability] +
-      (proficient ? PROFICIENCY_BONUS : 0) +
-      (expert ? PROFICIENCY_BONUS : 0);
+    const bonus = skillBonus(character, skill);
 
     row.classList.toggle("is-proficient", proficient);
     row.classList.toggle("is-expert", expert);
@@ -1937,6 +1969,583 @@ function asPlainText(character) {
 }
 
 /* ---------------------------------------------------------
+   PDF export
+
+   A PDF is a text format with an index bolted to the end, so one can be
+   written out by hand -- which is the only way to offer a download here
+   and keep the no-dependency, no-build-step rule. Nothing is fetched and
+   nothing is installed: the file is assembled as a string and handed to
+   the browser as a blob.
+
+   Two things make that tractable. The base-14 fonts (Helvetica, Courier)
+   are in every reader, so no font has to be embedded. And the file stays
+   pure ASCII -- anything above 127 is written as a WinAnsi octal escape
+   -- so a string index is a byte offset, which is what the xref table
+   needs.
+   --------------------------------------------------------- */
+
+const PDF_PAGE = {
+  width: 612, // US Letter in points, the size the 2024 sheet prints at
+  height: 792,
+  margin: 46,
+  gutter: 24,
+  footer: 30,
+};
+
+const PDF_FONT = { body: "F1", bold: "F2", mono: "F3" };
+
+// Anything the generator can emit that WinAnsi spells differently from
+// ASCII. Everything else above 127 would be a bug worth seeing, so it
+// becomes a question mark rather than being silently dropped.
+const PDF_WIN_ANSI = {
+  "—": "\\227",
+  "–": "\\226",
+  "‘": "\\221",
+  "’": "\\222",
+  "“": "\\223",
+  "”": "\\224",
+  "·": "\\267",
+  "×": "\\327",
+  é: "\\351",
+};
+
+// The writer has to know how wide a line will be before it commits to
+// it. Canvas has the metrics already, and Arial -- what a browser hands
+// back when asked for Helvetica -- is metrically identical to it, so the
+// wrap is measured rather than guessed at.
+const pdfMeasure = (function () {
+  const context = document.createElement("canvas").getContext("2d");
+  return function (text, size, bold, mono) {
+    const family = mono
+      ? "'Courier New', Courier, monospace"
+      : "Helvetica, Arial, sans-serif";
+    context.font = (bold ? "bold " : "") + size + "px " + family;
+    return context.measureText(text).width;
+  };
+})();
+
+function pdfString(text) {
+  let out = "";
+  String(text)
+    .split("")
+    .forEach((glyph) => {
+      if (glyph === "\\" || glyph === "(" || glyph === ")") {
+        out += "\\" + glyph;
+      } else if (glyph.charCodeAt(0) < 128) {
+        out += glyph;
+      } else {
+        out += PDF_WIN_ANSI[glyph] || "?";
+      }
+    });
+  return out;
+}
+
+function pdfNum(value) {
+  return Number(value).toFixed(2);
+}
+
+function pdfWrap(text, size, bold, width) {
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = "";
+
+  words.forEach((word) => {
+    const next = line ? line + " " + word : word;
+    if (line && pdfMeasure(next, size, bold) > width) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  });
+
+  if (line) lines.push(line);
+  return lines.length ? lines : [""];
+}
+
+/* --- the page as a cursor --------------------------------------------- */
+
+function pdfStart() {
+  const top = PDF_PAGE.height - PDF_PAGE.margin;
+  return {
+    pages: [],
+    ops: [],
+    columnWidth: (PDF_PAGE.width - PDF_PAGE.margin * 2 - PDF_PAGE.gutter) / 2,
+    columnTop: top,
+    bottom: PDF_PAGE.margin + PDF_PAGE.footer,
+    column: 0,
+    y: top,
+  };
+}
+
+function pdfColumnX(doc) {
+  return PDF_PAGE.margin + doc.column * (doc.columnWidth + PDF_PAGE.gutter);
+}
+
+function pdfBreakPage(doc) {
+  doc.pages.push(doc.ops);
+  doc.ops = [];
+  doc.column = 0;
+  doc.columnTop = PDF_PAGE.height - PDF_PAGE.margin;
+  doc.y = doc.columnTop;
+}
+
+// Ask for room before drawing anything. Fill the left column, then the
+// right, then start a page: the order a reader takes them in.
+function pdfNeed(doc, height) {
+  if (doc.y - height >= doc.bottom) return;
+  if (doc.column === 0) {
+    doc.column = 1;
+    doc.y = doc.columnTop;
+    return;
+  }
+  pdfBreakPage(doc);
+}
+
+function pdfWrite(doc, text, x, y, options) {
+  doc.ops.push(
+    "q " +
+      pdfNum(options.gray === undefined ? 0.1 : options.gray) +
+      " g BT /" +
+      (options.font || PDF_FONT.body) +
+      " " +
+      pdfNum(options.size) +
+      " Tf " +
+      pdfNum(options.spacing || 0) +
+      " Tc 1 0 0 1 " +
+      pdfNum(x) +
+      " " +
+      pdfNum(y) +
+      " Tm (" +
+      pdfString(text) +
+      ") Tj ET Q",
+  );
+}
+
+function pdfRule(doc, x, y, width, gray) {
+  doc.ops.push(
+    "q " +
+      pdfNum(gray === undefined ? 0.62 : gray) +
+      " G 0.6 w " +
+      pdfNum(x) +
+      " " +
+      pdfNum(y) +
+      " m " +
+      pdfNum(x + width) +
+      " " +
+      pdfNum(y) +
+      " l S Q",
+  );
+}
+
+// Proficiency gets a filled square rather than a dot: a circle is four
+// bezier segments, and this is a 3pt mark nobody will squint at.
+function pdfMark(doc, x, y) {
+  doc.ops.push("q 0.1 g " + pdfNum(x) + " " + pdfNum(y) + " 3 3 re f Q");
+}
+
+/* --- drawing the sheet ------------------------------------------------ */
+
+function pdfHeading(doc, title) {
+  pdfNeed(doc, 44);
+  const x = pdfColumnX(doc);
+  doc.y -= 13;
+  pdfWrite(doc, title.toUpperCase(), x, doc.y, {
+    size: 7.4,
+    font: PDF_FONT.bold,
+    spacing: 0.9,
+    gray: 0.3,
+  });
+  doc.y -= 5;
+  pdfRule(doc, x, doc.y, doc.columnWidth);
+  doc.y -= 11;
+}
+
+function pdfRow(doc, row) {
+  const size = row.bold ? 9 : 8.4;
+  const indent = row.indent || 0;
+  const value = row.value === undefined ? "" : String(row.value);
+  const valueWidth = value ? pdfMeasure(value, size, row.bold) : 0;
+  const width = doc.columnWidth - indent - (valueWidth ? valueWidth + 8 : 0);
+  const lines = pdfWrap(row.label, size, row.bold, width);
+
+  pdfNeed(doc, lines.length * (size + 2.6));
+
+  const x = pdfColumnX(doc) + indent;
+  lines.forEach((line, index) => {
+    pdfWrite(doc, line, x, doc.y, {
+      size: size,
+      font: row.bold ? PDF_FONT.bold : PDF_FONT.body,
+      gray: row.faint ? 0.42 : 0.1,
+    });
+
+    if (index === 0 && value) {
+      pdfWrite(
+        doc,
+        value,
+        pdfColumnX(doc) + doc.columnWidth - valueWidth,
+        doc.y,
+        { size: size, font: row.bold ? PDF_FONT.bold : PDF_FONT.body },
+      );
+    }
+    if (index === 0 && row.mark) pdfMark(doc, x - 8, doc.y + 2);
+
+    doc.y -= size + 2.6;
+  });
+}
+
+function pdfHeader(doc, character, serial) {
+  const width = PDF_PAGE.width - PDF_PAGE.margin * 2;
+  const x = PDF_PAGE.margin;
+
+  doc.y -= 20;
+  pdfWrite(doc, character.name, x, doc.y, { size: 20, font: PDF_FONT.bold });
+
+  doc.y -= 15;
+  pdfWrite(
+    doc,
+    "Level 1 " +
+      character.species.name +
+      (character.lineage ? " (" + character.lineage.name + ")" : "") +
+      " " +
+      character.cls.name +
+      " — " +
+      character.cls.subclass,
+    x,
+    doc.y,
+    { size: 10 },
+  );
+
+  doc.y -= 12;
+  pdfWrite(
+    doc,
+    character.background.name +
+      " background · " +
+      character.alignment +
+      " · " +
+      character.size +
+      " · " +
+      character.speed +
+      " ft.",
+    x,
+    doc.y,
+    { size: 8.6, gray: 0.35 },
+  );
+  pdfWrite(doc, serial, x + width - pdfMeasure(serial, 8, false, true), doc.y, {
+    size: 8,
+    font: PDF_FONT.mono,
+    gray: 0.35,
+  });
+
+  doc.y -= 10;
+  pdfRule(doc, x, doc.y, width, 0.35);
+  doc.y -= 6;
+
+  // Everything after the header flows in two columns, and the right one
+  // starts level with the left rather than at the top of the sheet.
+  doc.columnTop = doc.y;
+}
+
+function skillBonus(character, skill) {
+  const proficient = character.skills.indexOf(skill.name) !== -1;
+  const expert = character.expertise.indexOf(skill.name) !== -1;
+  return (
+    character.mods[skill.ability] +
+    (proficient ? PROFICIENCY_BONUS : 0) +
+    (expert ? PROFICIENCY_BONUS : 0)
+  );
+}
+
+// The same sheet the page shows, as data: one list of sections, each a
+// list of rows. The layout above knows nothing about D&D, and this knows
+// nothing about points and columns.
+function sheetSections(character) {
+  const sections = [];
+  const passiveOf = function (id) {
+    return (
+      10 +
+      skillBonus(
+        character,
+        SKILLS.find((skill) => skill.id === id),
+      )
+    );
+  };
+
+  const abilities = { title: "ability scores", rows: [] };
+  ABILITIES.forEach((ability) => {
+    abilities.rows.push({
+      label: ABILITY_NAMES[ability],
+      value: character.scores[ability] + "  " + signed(character.mods[ability]),
+      bold: true,
+    });
+
+    const proficientSave = character.cls.saves.indexOf(ability) !== -1;
+    abilities.rows.push({
+      label: "saving throw",
+      value: signed(
+        character.mods[ability] + (proficientSave ? PROFICIENCY_BONUS : 0),
+      ),
+      indent: 12,
+      mark: proficientSave,
+      faint: !proficientSave,
+    });
+
+    SKILLS.filter((skill) => skill.ability === ability).forEach((skill) => {
+      const trained =
+        character.skills.indexOf(skill.name) !== -1 ||
+        character.expertise.indexOf(skill.name) !== -1;
+      abilities.rows.push({
+        label: skill.name,
+        value: signed(skillBonus(character, skill)),
+        indent: 12,
+        mark: trained,
+        faint: !trained,
+      });
+    });
+  });
+  sections.push(abilities);
+
+  sections.push({
+    title: "combat",
+    rows: [
+      { label: "armor class", value: character.armorClass },
+      {
+        label: character.cls.kit.armor || "unarmored",
+        indent: 12,
+        faint: true,
+      },
+      { label: "hit points", value: character.maxHp },
+      { label: "hit dice", value: "1d" + character.cls.hitDie },
+      { label: "initiative", value: signed(character.initiative) },
+      { label: "proficiency bonus", value: signed(PROFICIENCY_BONUS) },
+      { label: "passive perception", value: passiveOf("perception") },
+      { label: "passive insight", value: passiveOf("insight") },
+      { label: "passive investigation", value: passiveOf("investigation") },
+      {
+        label: "heroic inspiration",
+        value: character.heroicInspiration ? "yes" : "no",
+      },
+    ],
+  });
+
+  sections.push({
+    title: "attacks",
+    rows: character.attacks.map((attack) => ({
+      label:
+        attack.name +
+        " — " +
+        attack.bonus +
+        " — " +
+        attack.damage +
+        (attack.notes ? " — " + attack.notes : ""),
+    })),
+  });
+
+  sections.push({
+    title: "features & traits",
+    rows: character.cls.features
+      .concat("Subclass: " + character.cls.subclass)
+      .concat(character.traits)
+      .concat(character.feats)
+      .map((entry) => ({ label: entry })),
+  });
+
+  sections.push({
+    title: "proficiencies & training",
+    rows: [
+      { label: "armor", bold: true },
+      { label: character.cls.armorTraining, indent: 12 },
+      { label: "weapons", bold: true },
+      { label: character.cls.weaponTraining, indent: 12 },
+      { label: "tools", bold: true },
+      { label: character.cls.toolTraining, indent: 12 },
+      { label: character.background.tool, indent: 12 },
+      { label: "languages", bold: true },
+      { label: character.languages.join(", "), indent: 12 },
+    ],
+  });
+
+  sections.push({
+    title: "equipment",
+    rows: character.equipment
+      .map((item) => ({ label: item }))
+      .concat([{ label: "coin", value: character.gold + " GP", bold: true }]),
+  });
+
+  if (character.spellcasting) {
+    const casting = character.spellcasting;
+    sections.push({
+      title: casting.label,
+      rows: [
+        {
+          label: "spellcasting ability",
+          value: ABILITY_NAMES[casting.ability],
+        },
+        { label: "spell save DC", value: casting.dc },
+        { label: "spell attack", value: casting.attack },
+        { label: "level 1 slots", value: casting.slots },
+        { label: "cantrips", bold: true },
+        {
+          label: casting.cantrips.length ? casting.cantrips.join(", ") : "none",
+          indent: 12,
+        },
+        { label: "prepared", bold: true },
+        { label: casting.prepared.join(", "), indent: 12 },
+      ],
+    });
+  }
+
+  return sections;
+}
+
+/* --- file assembly ---------------------------------------------------- */
+
+// Footers are written last because they carry a page count, which is not
+// known until the last page has been broken.
+function pdfFooters(doc, serial) {
+  const width = PDF_PAGE.width - PDF_PAGE.margin * 2;
+
+  doc.pages.forEach((ops, index) => {
+    const held = doc.ops;
+    doc.ops = ops;
+
+    const y = PDF_PAGE.margin + 12;
+    pdfRule(doc, PDF_PAGE.margin, y + 12, width, 0.75);
+    pdfWrite(doc, "cg–20 · " + serial, PDF_PAGE.margin, y, {
+      size: 7.2,
+      font: PDF_FONT.mono,
+      gray: 0.45,
+    });
+
+    const note =
+      "SRD 5.2.1 · CC BY 4.0 · page " + (index + 1) + " of " + doc.pages.length;
+    pdfWrite(
+      doc,
+      note,
+      PDF_PAGE.margin + width - pdfMeasure(note, 7.2, false, true),
+      y,
+      { size: 7.2, font: PDF_FONT.mono, gray: 0.45 },
+    );
+
+    doc.ops = held;
+  });
+}
+
+function pdfSerialize(doc, title) {
+  const count = doc.pages.length;
+  const pageIds = doc.pages.map((page, index) => 3 + index);
+  const contentIds = doc.pages.map((page, index) => 3 + count + index);
+  const fontIds = [3 + count * 2, 4 + count * 2, 5 + count * 2];
+
+  const bodies = [];
+  bodies[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  bodies[2] =
+    "<< /Type /Pages /Count " +
+    count +
+    " /Kids [" +
+    pageIds.map((id) => id + " 0 R").join(" ") +
+    "] >>";
+
+  doc.pages.forEach((ops, index) => {
+    bodies[pageIds[index]] =
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " +
+      PDF_PAGE.width +
+      " " +
+      PDF_PAGE.height +
+      "] /Resources << /Font << /F1 " +
+      fontIds[0] +
+      " 0 R /F2 " +
+      fontIds[1] +
+      " 0 R /F3 " +
+      fontIds[2] +
+      " 0 R >> >> /Contents " +
+      contentIds[index] +
+      " 0 R >>";
+
+    const stream = ops.join("\n");
+    bodies[contentIds[index]] =
+      "<< /Length " + stream.length + " >>\nstream\n" + stream + "\nendstream";
+  });
+
+  ["Helvetica", "Helvetica-Bold", "Courier"].forEach((name, index) => {
+    bodies[fontIds[index]] =
+      "<< /Type /Font /Subtype /Type1 /BaseFont /" +
+      name +
+      " /Encoding /WinAnsiEncoding >>";
+  });
+
+  let out = "%PDF-1.4\n";
+  const offsets = [];
+  for (let id = 1; id < bodies.length; id += 1) {
+    offsets[id] = out.length;
+    out += id + " 0 obj\n" + bodies[id] + "\nendobj\n";
+  }
+
+  // This is why the file stays ASCII: every xref entry is a byte offset,
+  // and one multi-byte character would slide all of them.
+  const startxref = out.length;
+  out += "xref\n0 " + bodies.length + "\n0000000000 65535 f \n";
+  for (let id = 1; id < bodies.length; id += 1) {
+    out += String(offsets[id]).padStart(10, "0") + " 00000 n \n";
+  }
+
+  out +=
+    "trailer\n<< /Size " +
+    bodies.length +
+    " /Root 1 0 R /Info << /Title (" +
+    pdfString(title) +
+    ") /Producer (cg-20) >> >>\nstartxref\n" +
+    startxref +
+    "\n%%EOF\n";
+
+  return out;
+}
+
+function buildSheetPdf(character, serial) {
+  const doc = pdfStart();
+  pdfHeader(doc, character, serial);
+
+  sheetSections(character).forEach((section) => {
+    pdfHeading(doc, section.title);
+    section.rows.forEach((row) => pdfRow(doc, row));
+  });
+
+  pdfBreakPage(doc);
+  pdfFooters(doc, serial);
+  return pdfSerialize(doc, character.name);
+}
+
+function slugify(text) {
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || "character"
+  );
+}
+
+function exportSheet() {
+  const character = buildCharacter(state);
+  const serial = serialOf(state);
+  const blob = new Blob([buildSheetPdf(character, serial)], {
+    type: "application/pdf",
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = slugify(character.name) + "-" + serial + ".pdf";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoked a beat later: revoking it inline cancels the download in
+  // some browsers.
+  window.setTimeout(() => URL.revokeObjectURL(url), 4000);
+
+  status("sheet exported as PDF");
+}
+
+/* ---------------------------------------------------------
    Panel state, serial numbers, and controls
    --------------------------------------------------------- */
 
@@ -1945,6 +2554,9 @@ const state = {
   holds: {},
   method: "array",
   setting: "generic",
+  // Set only while a held name outlives the species it was drawn from.
+  // null means "name follows the current species", which is the usual case.
+  nameSpecies: null,
 };
 
 CHANNELS.forEach((channel) => {
@@ -1959,13 +2571,32 @@ function serialOf(current) {
   // existed byte-identical, so old links are not quietly invalidated.
   const setting = settingFor(current.setting);
   if (setting.id !== SETTINGS[0].id) groups.push(setting.code);
+
+  // Same rule for the name pin: it is only written when the name really
+  // has outlived its species, so nothing that was rolled without one
+  // changes shape. "N" plus an index into SPECIES, which is already
+  // load-bearing -- reordering that array rewrites every serial anyway.
+  const pinned = current.nameSpecies;
+  if (pinned && pinned !== speciesFor(current.seeds.species).id) {
+    groups.push("N" + SPECIES.findIndex((entry) => entry.id === pinned));
+  }
   return groups.join("-");
 }
 
 function parseSerial(text) {
   const groups = text.replace(/^#/, "").toUpperCase().split("-");
-  // 5 seeds + method, and optionally a setting after it.
+  // 5 seeds + method, then two optional groups in order: the setting
+  // letter, then the name pin. Both are read off the end, so a serial
+  // that predates either still parses as the shorter thing it is.
   const withMethod = CHANNELS.length + 1;
+
+  let nameSpecies = null;
+  if (/^N\d{1,2}$/.test(groups[groups.length - 1])) {
+    const match = SPECIES[Number(groups.pop().slice(1))];
+    if (!match) return null;
+    nameSpecies = match.id;
+  }
+
   if (groups.length !== withMethod && groups.length !== withMethod + 1) {
     return null;
   }
@@ -1990,6 +2621,7 @@ function parseSerial(text) {
     seeds: seeds,
     method: methodGroup === "A" ? "array" : "dice",
     setting: setting,
+    nameSpecies: nameSpecies,
   };
 }
 
@@ -2019,6 +2651,7 @@ function commit(animated) {
   const character = buildCharacter(state);
   const serial = serialOf(state);
 
+  syncLamps();
   setText("serial", serial);
   setText("serial-lcd", serial);
   window.history.replaceState(null, "", "#" + serial);
@@ -2054,6 +2687,15 @@ function commit(animated) {
 }
 
 function rollChannels(channels, animated) {
+  // Hold the name and roll species and the name has to stay put, even
+  // though the two share a stream. Pin it to the species it was drawn
+  // from before that species goes; rolling the name itself releases it.
+  if (channels.indexOf("name") !== -1) {
+    state.nameSpecies = null;
+  } else if (channels.indexOf("species") !== -1 && !state.nameSpecies) {
+    state.nameSpecies = speciesFor(state.seeds.species).id;
+  }
+
   channels.forEach((channel) => {
     state.seeds[channel] = randomSeed();
   });
@@ -2279,6 +2921,9 @@ function wireControls() {
     dip.addEventListener("change", () => {
       const channel = dip.getAttribute("data-hold");
       state.holds[channel] = dip.checked;
+      // A hold changes no seed, so there is nothing to re-commit -- the
+      // lamp is the only thing on the display that moves.
+      syncLamps();
       status(channel + (dip.checked ? " held" : " released"));
     });
   });
@@ -2317,6 +2962,7 @@ function wireControls() {
   syncKnob("setting");
 
   byId("copy").addEventListener("click", copySheet);
+  byId("export").addEventListener("click", exportSheet);
 
   // One shortcut, and only when nothing else wants the key.
   document.addEventListener("keydown", (event) => {
@@ -2334,6 +2980,7 @@ function applySerial(parsed) {
   state.seeds = parsed.seeds;
   state.method = parsed.method;
   state.setting = parsed.setting;
+  state.nameSpecies = parsed.nameSpecies;
 
   [
     ["method", state.method],

@@ -41,6 +41,18 @@
 
   --sans: "Space Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --script: "UnifrakturMaguntia", var(--serif);
+  /* Key legends only, and the one thing each setting skin re-cuts besides
+     colour. Grenze Gotisch is a blackletter that still reads at 14px,
+     which UnifrakturMaguntia does not -- that one stays on the sheet's
+     name, where it has 2rem to be illegible in.
+
+     Every face here is a different width and x-height at the same nominal
+     size, so the skins override --legend-size and --legend-weight with it
+     rather than leave the keys to fall where they may. The master key is
+     twice the legend size, always. */
+  --legend: "Grenze Gotisch", "UnifrakturMaguntia", var(--serif);
+  --legend-size: 0.95rem;
+  --legend-weight: 700;
 
   /* EP–1320 draws its frame in one heavy weight and everything
      inside it in one hairline. Nothing in between. */
@@ -216,6 +228,17 @@
   padding: 0.9rem 1rem;
   overflow: hidden;
   font-family: var(--mono);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 1rem;
+  align-items: start;
+}
+
+/* The readout column. min-width keeps the grid from refusing to shrink it,
+   which is what makes the name and build lines ellipsis rather than push
+   the lamp bank off the screen. */
+.lcd__main {
+  min-width: 0;
 }
 
 .unit__display::after {
@@ -290,6 +313,79 @@
 }
 
 /* ---------------------------------------------------------
+   Lamp bank
+
+   One lamp per switch on the deck. Lit is a filled dot in the bright
+   phosphor, unlit a hollow ring in the dim one, so the state never rests
+   on colour alone -- and both label states stay on --screen-dim, which
+   clears AA on --screen in every setting skin. No transition: a panel
+   lamp either is on or it isn't.
+   --------------------------------------------------------- */
+.lcd__lamps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 6.5rem;
+}
+
+.lamps__head {
+  margin: 0.35rem 0 0.15rem;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--screen-dim);
+}
+
+.lamps__head:first-child {
+  margin-top: 0;
+}
+
+.lamps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.lamp {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.58rem;
+  line-height: 1.35;
+  color: var(--screen-dim);
+}
+
+/* Every glyph is drawn in currentColor, so lighting a lamp is one colour
+   change on the row and nothing else. */
+.lamp__icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.6;
+}
+
+.lamp__pip {
+  fill: currentColor;
+  stroke: none;
+}
+
+.lamp.is-lit {
+  color: var(--screen-fg);
+}
+
+.lamp.is-lit .lamp__icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 3px var(--screen-fg));
+}
+
+/* ---------------------------------------------------------
    Keys, channels, DIP switches
    --------------------------------------------------------- */
 .unit__deck {
@@ -326,7 +422,10 @@
 }
 
 .key__legend {
-  font-weight: 700;
+  font-family: var(--legend);
+  font-weight: var(--legend-weight);
+  font-size: var(--legend-size);
+  line-height: 1.15;
 }
 
 .key__sub {
@@ -345,9 +444,8 @@
 }
 
 .key--master .key__legend {
-  font-size: 1.35rem;
+  font-size: calc(var(--legend-size) * 2);
   line-height: 1;
-  letter-spacing: -0.02em;
 }
 
 .key--master .key__sub {
@@ -594,6 +692,14 @@
 
 .key--wide {
   min-height: 58px;
+}
+
+/* Two keys sharing one key's footprint, the way a panel splits a wide
+   button when it grows a second function. */
+.key-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
 }
 
 .unit__serial {
@@ -1030,6 +1136,38 @@
     padding-top: 2.5rem;
   }
 
+  /* Too narrow for a column beside the readout: the bank drops under it
+     and the groups run as wrapped rows instead. */
+  .unit__display {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lcd__lamps {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.7rem;
+    row-gap: 0.2rem;
+  }
+
+  /* Each legend takes its own line so a group never reads as a tail of
+     the one before it. */
+  .lamps__head {
+    flex: 0 0 100%;
+    margin: 0.25rem 0 0;
+  }
+
+  .lamps__head:first-child {
+    margin-top: 0;
+  }
+
+  .lamps {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 0.7rem;
+    row-gap: 0.2rem;
+  }
+
   .channels {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1111,6 +1249,13 @@
 
   --key-face: #e6ebf1;
   --key-edge: #93a5b8;
+
+  /* Realms covers and logos have leaned on inscriptional Roman capitals
+     since the grey box -- Waterdeep grandeur, not woodcut. Cinzel is cut
+     from Trajan, so it runs large and needs the size pulled back. */
+  --legend: "Cinzel", "Trajan Pro", var(--serif);
+  --legend-size: 0.82rem;
+  --legend-weight: 700;
 }
 
 /* greyhawk */
@@ -1136,6 +1281,13 @@
 
   --key-face: #e9e1cb;
   --key-edge: #a89469;
+
+  /* Gygax's Oerth as the 1e books printed it: hand-inked maps and type
+     that looks stamped rather than set. IM Fell is a scan of 17th-century
+     Fell types, ink spread and all, and needs no bold to read dark. */
+  --legend: "IM Fell English", "Souvenir", var(--serif);
+  --legend-size: 1rem;
+  --legend-weight: 400;
 }
 
 /* dark sun */
@@ -1161,6 +1313,13 @@
 
   --key-face: #eddcbb;
   --key-edge: #b08d4e;
+
+  /* Athas is bone, obsidian and sun -- Brom's covers are carved and
+     scorched, never elegant. Metamorphous has the chiselled, weathered
+     edge for it and is heavy enough on its own. */
+  --legend: "Metamorphous", "Papyrus", var(--serif);
+  --legend-size: 0.88rem;
+  --legend-weight: 400;
 }
 
 /* dragonlance */
@@ -1186,4 +1345,11 @@
 
   --key-face: #e8e5ef;
   --key-edge: #9a92b0;
+
+  /* Krynn is the romantic one: Elmore knights, calligraphic logos, epic
+     rather than grim. Almendra is a fantasy calligraphic serif and takes
+     the extra size well. */
+  --legend: "Almendra", "Cormorant Garamond", var(--serif);
+  --legend-size: 1rem;
+  --legend-weight: 700;
 }
