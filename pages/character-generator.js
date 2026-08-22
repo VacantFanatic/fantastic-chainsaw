@@ -115,6 +115,7 @@ const SPECIES = [
     name: "Dwarf",
     size: ["Medium"],
     speed: 30,
+    hpPerLevel: 1,
     traits: [
       "Darkvision 120 ft.",
       "Dwarven Resilience — Poison resistance, advantage on Poison saves",
@@ -257,6 +258,34 @@ const SPECIES = [
         },
       ],
     },
+  },
+  {
+    id: "half-dwarf",
+    name: "Half-Dwarf",
+    settings: ["dark-sun"],
+    size: ["Medium"],
+    speed: 30,
+    hpPerLevel: 1,
+    traits: [
+      "Darkvision 60 ft.",
+      "Powerful Build — advantage on Grappled saves, count as Large for carry",
+      "Sinewed — +1 Hit Point per level",
+      "Tireless — a Long Rest takes 4 hours",
+    ],
+  },
+  {
+    id: "roadkin",
+    name: "Roadkin",
+    settings: ["dragonlance"],
+    size: ["Small"],
+    speed: 30,
+    traits: [
+      "Fearless — advantage on saves against the Frightened condition",
+      "Nimble — move through the space of larger creatures",
+      "Unbothered — you have never once been talked out of anything",
+    ],
+    keenSenses: ["Investigation", "Perception", "Sleight of Hand"],
+    keenSenseLabel: "Curious Hands",
   },
 ];
 
@@ -1224,6 +1253,35 @@ const NAME_BANKS = {
       null,
     ],
   },
+  "half-dwarf": {
+    given: [
+      ["Gar", "Mek", "Thal", "Rud", "Sen", "Kav", "Bru", "Ort"],
+      ["ak", "en", "ir", "us", "and", "ek", "om", "ar"],
+    ],
+    family: [
+      ["Sun", "Salt", "Ash", "Slag", "Grit", "Kiln", "Brine", "Scour"],
+      ["broken", "bearer", "hand", "back", "born", "struck", "worn", "cast"],
+    ],
+  },
+  roadkin: {
+    given: [
+      ["Tam", "Pib", "Nell", "Jory", "Sil", "Wick", "Bree", "Ond"],
+      ["kin", "ra", "ow", "et", "by", "le", "na", "ick"],
+    ],
+    family: [
+      ["Nine", "Far", "Pocket", "Ever", "Half", "Long", "Quick", "Odd"],
+      [
+        "pockets",
+        "whistle",
+        "step",
+        "wander",
+        "penny",
+        "road",
+        "latch",
+        "spoon",
+      ],
+    ],
+  },
 };
 
 const EPITHETS = [
@@ -1243,23 +1301,371 @@ const EPITHETS = [
    Seeded randomness
    --------------------------------------------------------- */
 
-// Campaign settings. For now this only re-skins the panel: nothing here
-// reaches buildCharacter, so every setting still rolls a generic SRD
-// character. When it does start filtering species and adjusting bonuses,
-// this is where that data hangs.
+// Campaign settings. A table like CARTRIDGES: every field past the first
+// three is optional, and every one falls back, so generic can carry none
+// of them and stay the absence of a setting rather than one of five.
+//
+//   name             what the sheet prints; `label` is the panel's
+//   species/classes  filters, same signature as a cartridge's
+//   names            per-species syllable banks, overriding NAME_BANKS
+//   epithets         overriding EPITHETS
+//   regions          where someone is from; no regions means no homeland
+//   subclasses       renames a class's subclass, by class id
+//
+// Nothing here restats an SRD entry. The place names, epithets, syllables
+// and subclass names are all written here -- the SRD has no such tables,
+// and the published settings these are named after are not ours to copy.
 //
 // The code letter is what goes in the serial. Generic is deliberately
 // letterless -- see serialOf.
 const SETTINGS = [
-  { id: "generic", code: "G", label: "generic" },
-  { id: "forgotten-realms", code: "F", label: "forgotten realms" },
-  { id: "greyhawk", code: "H", label: "greyhawk" },
-  { id: "dark-sun", code: "D", label: "dark sun" },
-  { id: "dragonlance", code: "L", label: "dragonlance" },
+  {
+    id: "generic",
+    name: "Generic",
+    code: "G",
+    label: "generic",
+    note: "the whole book, no world attached.",
+  },
+  {
+    id: "forgotten-realms",
+    name: "Forgotten Realms",
+    code: "F",
+    label: "forgotten realms",
+    note: "crowded and chartered. everything is somewhere.",
+    // The one setting that refuses nothing: its whole character is that
+    // the entire roster already lives there.
+    names: {
+      human: {
+        given: [
+          ["Aer", "Bral", "Dorn", "Elmi", "Kes", "Ryld", "Tal", "Vaeri"],
+          ["an", "eth", "ara", "us", "wyn", "ir", "ond", "essa"],
+        ],
+        family: [
+          [
+            "Storm",
+            "Silver",
+            "Dawn",
+            "Amber",
+            "Black",
+            "Hearth",
+            "Sun",
+            "Winter",
+          ],
+          ["hand", "moon", "staff", "hall", "water", "song", "mantle", "fell"],
+        ],
+      },
+    },
+    epithets: [
+      "of the Amber Coast",
+      "the Well-Connected",
+      "the Chartered",
+      "the Twice-Contracted",
+      "of No Guild",
+      "the Bonded",
+      "the Recommended",
+      "the Overbooked",
+    ],
+    regions: [
+      "the Amber Coast",
+      "the Harrowmark",
+      "Nine Bridges",
+      "the Silverfell",
+      "Candlewatch",
+      "the Salt Marches",
+      "Old Thornhold",
+      "the Winterhall",
+    ],
+    subclasses: {
+      bard: "College of the Nine Bridges",
+      cleric: "Dawnkeeper Domain",
+      rogue: "the Quiet Trade",
+      wizard: "Order of the Amber Scroll",
+    },
+  },
+  {
+    id: "greyhawk",
+    name: "Greyhawk",
+    code: "H",
+    label: "greyhawk",
+    note: "older and colder. a narrower roster, a longer memory.",
+    species: (list) =>
+      list.filter(
+        (entry) => entry.id !== "dragonborn" && entry.id !== "goliath",
+      ),
+    names: {
+      human: {
+        given: [
+          ["Ald", "Cuth", "Erly", "Gwyn", "Hal", "Osric", "Ren", "Wilm"],
+          ["ric", "mund", "a", "eth", "win", "gar", "ild", "ot"],
+        ],
+        family: [
+          ["Grey", "Marsh", "Kettle", "Black", "Stand", "Old", "Rook", "Bram"],
+          [
+            "ward",
+            "field",
+            "stone",
+            "rush",
+            "gate",
+            "barrow",
+            "mill",
+            "hollow",
+          ],
+        ],
+      },
+    },
+    epithets: [
+      "the Elder",
+      "of the Old March",
+      "the Grey",
+      "the Sworn",
+      "the Unransomed",
+      "of the Ninefold Hills",
+      "the Weatherbeaten",
+      "the Landless",
+    ],
+    regions: [
+      "the Kettlemarch",
+      "the Grey Vale",
+      "the Ashen Downs",
+      "the Ninefold Hills",
+      "the Marchward",
+      "Blackrush",
+      "the Old Duchy",
+      "Hollowbrake",
+    ],
+    subclasses: {
+      cleric: "Old Faith Domain",
+      fighter: "Company of the Standing Shield",
+      ranger: "Marchwarden",
+      wizard: "the Grey Circle",
+    },
+  },
+  {
+    id: "dark-sun",
+    name: "Dark Sun",
+    code: "D",
+    label: "dark sun",
+    note: "no gods, no water, and no going back.",
+    // A thinner bestiary and an emptier sky: the gods are gone, which is
+    // what takes the cleric and the paladin with them. The goliath stays
+    // as the big folk, and the half-dwarf is native here and nowhere else.
+    species: (list) =>
+      list.filter(
+        (entry) =>
+          entry.id !== "gnome" &&
+          entry.id !== "dragonborn" &&
+          entry.id !== "tiefling" &&
+          entry.id !== "orc",
+      ),
+    classes: (list) =>
+      list.filter((cls) => cls.id !== "cleric" && cls.id !== "paladin"),
+    names: {
+      human: {
+        given: [
+          ["Ka", "Sef", "Tor", "Nim", "Ras", "Uld", "Yez", "Bri"],
+          ["ra", "ok", "ith", "ax", "un", "el", "ash", "ka"],
+        ],
+        family: [
+          ["Salt", "Glass", "Cinder", "Dry", "Sun", "Bone", "Char", "Thirst"],
+          [
+            "walker",
+            "cutter",
+            "born",
+            "wind",
+            "glare",
+            "field",
+            "tender",
+            "comb",
+          ],
+        ],
+      },
+      dwarf: {
+        given: [
+          ["Bur", "Kad", "Mol", "Grim", "Tesh", "Ond", "Ur", "Zad"],
+          ["ak", "un", "esh", "ir", "om", "az", "ek", "ar"],
+        ],
+        family: [
+          [
+            "Deep",
+            "Stone",
+            "Salt",
+            "Furrow",
+            "Iron",
+            "Kiln",
+            "Sand",
+            "Cistern",
+          ],
+          [
+            "keeper",
+            "tender",
+            "oath",
+            "delve",
+            "warden",
+            "brand",
+            "hold",
+            "vow",
+          ],
+        ],
+      },
+    },
+    epithets: [
+      "the Sun-Struck",
+      "of the Dry Well",
+      "who Walked It",
+      "the Unwatered",
+      "the Salt-Cured",
+      "of Ninth Well",
+      "the Still Breathing",
+      "the Sold Twice",
+    ],
+    regions: [
+      "the Glass Flats",
+      "Saltmourn",
+      "the Cinder Reach",
+      "Ninth Well",
+      "the Burnt Stair",
+      "Kiln",
+      "the Scour",
+      "Last Shade",
+    ],
+    subclasses: {
+      druid: "Circle of the Last Water",
+      fighter: "Arena Champion",
+      ranger: "Flats-Walker",
+      wizard: "the Ashen Art",
+    },
+  },
+  {
+    id: "dragonlance",
+    name: "Dragonlance",
+    code: "L",
+    label: "dragonlance",
+    note: "moons, oaths, and a war that already happened.",
+    // Small folk carry this one, so the roadkin are native here. Nothing
+    // to pact with means no warlock.
+    species: (list) =>
+      list.filter(
+        (entry) =>
+          entry.id !== "orc" &&
+          entry.id !== "goliath" &&
+          entry.id !== "dragonborn" &&
+          entry.id !== "tiefling",
+      ),
+    classes: (list) => list.filter((cls) => cls.id !== "warlock"),
+    names: {
+      human: {
+        given: [
+          ["Aur", "Ban", "Cael", "Dara", "Ist", "Mar", "Ren", "Til"],
+          ["ian", "eth", "wyn", "or", "ana", "ist", "us", "el"],
+        ],
+        family: [
+          [
+            "Silver",
+            "Moon",
+            "Bright",
+            "Iron",
+            "Lance",
+            "Storm",
+            "White",
+            "Ever",
+          ],
+          [
+            "blade",
+            "watch",
+            "banner",
+            "field",
+            "moor",
+            "vale",
+            "oath",
+            "light",
+          ],
+        ],
+      },
+      gnome: {
+        given: [
+          ["Cog", "Bell", "Pyr", "Nim", "Tock", "Ves", "Wim", "Zan"],
+          ["ric", "itt", "ora", "ex", "ple", "adin", "us", "ick"],
+        ],
+        family: [
+          [
+            "Over",
+            "Under",
+            "Cross",
+            "Back",
+            "Fore",
+            "Counter",
+            "Half",
+            "Double",
+          ],
+          [
+            "thread",
+            "wound",
+            "spring",
+            "gauge",
+            "flange",
+            "ratchet",
+            "bearing",
+          ],
+        ],
+      },
+      halfling: {
+        given: [
+          ["Pell", "Bram", "Dilly", "Wren", "Fen", "Mab", "Corry", "Nix"],
+          ["kin", "by", "et", "ow", "le", "ra", "und", "ick"],
+        ],
+        family: [
+          ["Nine", "Ever", "Far", "Odd", "Quick", "Long", "Half", "Bright"],
+          ["pockets", "road", "whistle", "spoon", "latch", "penny", "step"],
+        ],
+      },
+    },
+    epithets: [
+      "the Late-Sworn",
+      "of the Lantern Road",
+      "the Moonlit",
+      "the Oathless",
+      "who Waited",
+      "of the Long Barrows",
+      "the Twice-Promised",
+      "the Unheralded",
+    ],
+    regions: [
+      "the Vale of Lamps",
+      "Silverpine",
+      "the Lantern Road",
+      "High Kiln",
+      "Whitemoor",
+      "the Redwatch",
+      "Ninewells",
+      "the Long Barrows",
+    ],
+    subclasses: {
+      bard: "College of the Long Road",
+      cleric: "Restored Faith Domain",
+      paladin: "Oath of the Broken Lance",
+      wizard: "Order of the Crimson Moon",
+    },
+  },
 ];
 
 function settingFor(id) {
   return SETTINGS.find((entry) => entry.id === id) || SETTINGS[0];
+}
+
+// Everything a setting can override falls back to the generic table, so a
+// setting only has to write down the parts that differ.
+function nameBankFor(speciesId, settingId) {
+  const names = settingFor(settingId).names;
+  return (names && names[speciesId]) || NAME_BANKS[speciesId];
+}
+
+function epithetsFor(settingId) {
+  return settingFor(settingId).epithets || EPITHETS;
+}
+
+function subclassFor(cls, settingId) {
+  const named = settingFor(settingId).subclasses;
+  return (named && named[cls.id]) || cls.subclass;
 }
 
 // Cartridges clamp what the machine is allowed to roll. Shaped like
@@ -1295,8 +1701,13 @@ const CARTRIDGES = [
     id: "small-folk",
     label: "small folk",
     note: "gnomes and halflings, and whatever they get up to.",
+    // Anyone who is only ever Small. Tested by size rather than by a list
+    // of ids so that a setting's own small folk are caught too, without
+    // this entry having to know they exist.
     species: (list) =>
-      list.filter((entry) => entry.id === "gnome" || entry.id === "halfling"),
+      list.filter(
+        (entry) => entry.size.length === 1 && entry.size[0] === "Small",
+      ),
   },
   {
     id: "frontline",
@@ -1319,12 +1730,30 @@ function clampList(list, filter) {
   return kept.length ? kept : list;
 }
 
-function speciesListFor(cartridgeId) {
-  return clampList(SPECIES, cartridgeFor(cartridgeId).species);
+// Which species exist in a world at all. An entry with no `settings` list
+// exists everywhere, which is what all nine SRD entries are -- so generic
+// filters down to exactly those nine, in their original order, and every
+// character rolled without a setting letter still rolls the same.
+function nativeSpecies(settingId) {
+  return SPECIES.filter(
+    (entry) => !entry.settings || entry.settings.indexOf(settingId) !== -1,
+  );
 }
 
-function classListFor(cartridgeId) {
-  return clampList(CLASSES, cartridgeFor(cartridgeId).classes);
+// Belonging first, then what the world refuses, then what the machine was
+// told. Both clamps keep the empty-result fallback, so a cross like small
+// folk against dark sun narrows rather than breaking.
+function speciesListFor(cartridgeId, settingId) {
+  const world = clampList(
+    nativeSpecies(settingId),
+    settingFor(settingId).species,
+  );
+  return clampList(world, cartridgeFor(cartridgeId).species);
+}
+
+function classListFor(cartridgeId, settingId) {
+  const world = clampList(CLASSES, settingFor(settingId).classes);
+  return clampList(world, cartridgeFor(cartridgeId).classes);
 }
 
 // How many characters one serial can describe.
@@ -1569,15 +1998,17 @@ function flourishFor(id) {
   );
 }
 
-function buildName(rng, speciesId, flourishId) {
-  const bank = NAME_BANKS[speciesId];
+function buildName(rng, speciesId, flourishId, settingId) {
+  const bank = nameBankFor(speciesId, settingId);
   const given = pick(rng, bank.given[0]) + pick(rng, bank.given[1]);
   const family = bank.family[1]
     ? pick(rng, bank.family[0]) + pick(rng, bank.family[1])
     : pick(rng, bank.family[0]);
   const name = given + " " + family;
   const chance = flourishFor(flourishId).chance;
-  return rng() < chance ? name + ", " + pick(rng, EPITHETS) : name;
+  return rng() < chance
+    ? name + ", " + pick(rng, epithetsFor(settingId))
+    : name;
 }
 
 // Four detents on one knob, from prudent to reckless. Each method draws a
@@ -1719,16 +2150,20 @@ function buildEquipment(cls, background) {
 // The species a seed produces, without rolling the rest of the character.
 // buildCharacter draws the same value as the first pick off its own
 // species stream -- these two have to agree, so they read the same.
-function speciesFor(seed, cartridgeId) {
-  return pick(makeRng("species/" + seed), speciesListFor(cartridgeId));
+function speciesFor(seed, cartridgeId, settingId) {
+  return pick(
+    makeRng("species/" + seed),
+    speciesListFor(cartridgeId, settingId),
+  );
 }
 
 function buildCharacter(state) {
   const level = Math.max(1, Math.min(MAX_LEVEL, state.level || 1));
   const proficiency = proficiencyBonus(level);
+  const setting = settingFor(state.setting);
   const speciesRng = makeRng("species/" + state.seeds.species);
-  const speciesList = speciesListFor(state.cartridge);
-  const classList = classListFor(state.cartridge);
+  const speciesList = speciesListFor(state.cartridge, state.setting);
+  const classList = classListFor(state.cartridge, state.setting);
   const classRng = makeRng("class/" + state.seeds.class);
   const backgroundRng = makeRng("background/" + state.seeds.background);
   const statsRng = makeRng("stats/" + state.seeds.stats + "/" + state.method);
@@ -1741,15 +2176,26 @@ function buildCharacter(state) {
   const speed = (lineage && lineage.speed) || species.speed;
 
   const cls = pick(classRng, classList);
+  const subclass = subclassFor(cls, state.setting);
   const background = pick(backgroundRng, BACKGROUNDS);
   const priority = ABILITY_PRIORITY[cls.id];
+
+  // Where someone is from. Drawn from a stream of its own rather than
+  // appended to backgroundRng, which would have shifted the alignment draw
+  // that follows it and rewritten every character rolled before this.
+  const homeland = setting.regions
+    ? pick(
+        makeRng("home/" + state.seeds.name + "/" + setting.id),
+        setting.regions,
+      )
+    : null;
 
   // A held name keeps the species it was named for, so re-rolling species
   // cannot quietly rename a character the panel says is held. The pin
   // rides in the serial (see serialOf), so the link still rebuilds this.
   const namedFor = state.nameSpecies || species.id;
   const nameRng = makeRng("name/" + state.seeds.name + "/" + namedFor);
-  const name = buildName(nameRng, namedFor, state.flourish);
+  const name = buildName(nameRng, namedFor, state.flourish, state.setting);
 
   const pool = rollAbilityScores(statsRng, state.method);
   const boosted = applyBackgroundBoosts(
@@ -1787,7 +2233,9 @@ function buildCharacter(state) {
 
   if (species.keenSenses) {
     const sense = pick(speciesRng, species.keenSenses);
-    traits.push("Keen Senses — proficiency in " + sense);
+    traits.push(
+      (species.keenSenseLabel || "Keen Senses") + " — proficiency in " + sense,
+    );
     if (skills.indexOf(sense) === -1) skills.push(sense);
   }
 
@@ -1823,7 +2271,7 @@ function buildCharacter(state) {
   );
 
   let maxHp = hitPointsFor(cls, mods.con, level);
-  if (species.id === "dwarf") maxHp += level;
+  if (species.hpPerLevel) maxHp += species.hpPerLevel * level;
   if (feats.indexOf("Tough") !== -1) maxHp += level * 2;
 
   let armorClass;
@@ -1880,7 +2328,7 @@ function buildCharacter(state) {
   const table = LEVEL_FEATURES[cls.id] || {};
   for (let step = 2; step <= level; step += 1) {
     // Every 2024 class takes its subclass at 3.
-    if (step === 3) gained.push("Subclass: " + cls.subclass);
+    if (step === 3) gained.push("Subclass: " + subclass);
     (table[step] || []).forEach((feature) => gained.push(feature));
   }
 
@@ -1895,6 +2343,9 @@ function buildCharacter(state) {
     size: size,
     speed: speed,
     cls: cls,
+    subclass: subclass,
+    setting: setting,
+    homeland: homeland,
     background: background,
     scores: scores,
     mods: mods,
@@ -2122,7 +2573,7 @@ function renderDisplay(character) {
 function render(character) {
   setText("sheet-name", character.name);
   setText("sheet-class", character.cls.name);
-  setText("sheet-subclass", character.cls.subclass);
+  setText("sheet-subclass", character.subclass);
   setText(
     "sheet-species",
     character.lineage
@@ -2131,6 +2582,8 @@ function render(character) {
   );
   setText("sheet-background", character.background.name);
   setText("sheet-alignment", character.alignment);
+  setText("sheet-setting", character.setting.name);
+  setText("sheet-homeland", character.homeland || "—");
   setText("sheet-level", String(character.level));
 
   ABILITIES.forEach((ability) => {
@@ -2191,7 +2644,13 @@ function render(character) {
       character.cls.name +
       ", " +
       character.background.name +
-      " background. Sheet updated.",
+      " background" +
+      (character.setting.id === "generic"
+        ? ""
+        : ", " +
+          character.setting.name +
+          (character.homeland ? ", from " + character.homeland : "")) +
+      ". Sheet updated.",
   );
 }
 
@@ -2209,7 +2668,7 @@ function asPlainText(character) {
       " " +
       character.cls.name +
       " — " +
-      character.cls.subclass,
+      character.subclass,
   );
   lines.push(
     "Background: " +
@@ -2217,6 +2676,13 @@ function asPlainText(character) {
       " · Alignment: " +
       character.alignment,
   );
+  if (character.setting.id !== "generic") {
+    lines.push(
+      "Setting: " +
+        character.setting.name +
+        (character.homeland ? " · From: " + character.homeland : ""),
+    );
+  }
   lines.push(rule);
   lines.push(
     ABILITIES.map(
@@ -2540,7 +3006,7 @@ function pdfHeader(doc, character, serial) {
       " " +
       character.cls.name +
       " — " +
-      character.cls.subclass,
+      character.subclass,
     x,
     doc.y,
     { size: 10 },
@@ -2566,6 +3032,18 @@ function pdfHeader(doc, character, serial) {
     font: PDF_FONT.mono,
     gray: 0.35,
   });
+
+  if (character.setting.id !== "generic") {
+    doc.y -= 10;
+    pdfWrite(
+      doc,
+      character.setting.name +
+        (character.homeland ? " · " + character.homeland : ""),
+      x,
+      doc.y,
+      { size: 8.6, gray: 0.35 },
+    );
+  }
 
   doc.y -= 10;
   pdfRule(doc, x, doc.y, width, 0.35);
@@ -2674,7 +3152,7 @@ function sheetSections(character) {
   sections.push({
     title: "features & traits",
     rows: character.cls.features
-      .concat("Subclass: " + character.cls.subclass)
+      .concat("Subclass: " + character.subclass)
       .concat(character.traits)
       .concat(character.feats)
       .map((entry) => ({ label: entry })),
@@ -2923,12 +3401,16 @@ function asJson(character, serial) {
     },
     class: {
       name: character.cls.name,
-      subclass: character.cls.subclass,
+      subclass: character.subclass,
       hitDie: "1d" + character.cls.hitDie,
     },
     background: {
       name: character.background.name,
       tool: character.background.tool,
+    },
+    setting: {
+      name: character.setting.name,
+      homeland: character.homeland,
     },
     proficiencyBonus: character.proficiency,
     abilities: abilities,
@@ -2955,9 +3437,7 @@ function asJson(character, serial) {
     equipment: character.equipment,
     gold: character.gold,
     features: {
-      class: character.cls.features.concat(
-        "Subclass: " + character.cls.subclass,
-      ),
+      class: character.cls.features.concat("Subclass: " + character.subclass),
       species: character.traits,
       feats: character.feats,
     },
@@ -3057,7 +3537,8 @@ function serialOf(current) {
   const pinned = current.nameSpecies;
   if (
     pinned &&
-    pinned !== speciesFor(current.seeds.species, current.cartridge).id
+    pinned !==
+      speciesFor(current.seeds.species, current.cartridge, current.setting).id
   ) {
     groups.push("N" + SPECIES.findIndex((entry) => entry.id === pinned));
   }
@@ -3284,7 +3765,11 @@ function pinNameFor(channels) {
   if (channels.indexOf("name") !== -1) {
     state.nameSpecies = null;
   } else if (channels.indexOf("species") !== -1 && !state.nameSpecies) {
-    state.nameSpecies = speciesFor(state.seeds.species, state.cartridge).id;
+    state.nameSpecies = speciesFor(
+      state.seeds.species,
+      state.cartridge,
+      state.setting,
+    ).id;
   }
 }
 
@@ -3328,6 +3813,7 @@ function partyMember(current, index) {
     setting: current.setting,
     cartridge: current.cartridge,
     flourish: current.flourish,
+    level: current.level,
     party: 1,
     // A derived member was never held, so it has nothing pinned.
     nameSpecies: index === 1 ? current.nameSpecies : null,
@@ -4182,11 +4668,11 @@ function wireControls() {
       state.setting = radio.value;
       syncKnob("setting");
       applySetting();
-      status(settingFor(state.setting).label + " panel");
-      // The setting does not reach buildCharacter yet, so the sheet is the
-      // same character either way. Re-running the "searching" animation
-      // would imply a re-roll that did not happen.
-      commit(false);
+      status(settingFor(state.setting).note);
+      // The setting reaches buildCharacter now, so the sheet below really
+      // is a different character and the "searching" animation is telling
+      // the truth about it.
+      commit(true);
     });
   });
 
