@@ -1,4 +1,4 @@
-// CG–20 — a level 1 D&D character generator, wired to a fake front panel.
+// CG–20 — a levels 1-5 D&D character generator, wired to a fake front panel.
 //
 // Rules content (species, classes, backgrounds, gear, spells) is from the
 // System Reference Document 5.2.1, (c) Wizards of the Coast LLC, licensed
@@ -2093,7 +2093,7 @@ function renderSpells(character) {
   setText("spell-mod", casting.mod);
   setText("spell-dc", String(casting.dc));
   setText("spell-attack", casting.attack);
-  setText("spell-slots", casting.slots + " × level 1");
+  setText("spell-slots", casting.slotTable);
   setText(
     "spell-book",
     casting.book ? casting.book + " spells in the spellbook" : "—",
@@ -2110,7 +2110,11 @@ function renderDisplay(character) {
   setText("lcd-name", character.name);
   setText(
     "lcd-build",
-    character.species.name + " " + character.cls.name + " · level 1",
+    character.species.name +
+      " " +
+      character.cls.name +
+      " · level " +
+      character.level,
   );
   setBars(character.scores);
 }
@@ -2127,6 +2131,7 @@ function render(character) {
   );
   setText("sheet-background", character.background.name);
   setText("sheet-alignment", character.alignment);
+  setText("sheet-level", String(character.level));
 
   ABILITIES.forEach((ability) => {
     setText("score-" + ability, String(character.scores[ability]));
@@ -2165,7 +2170,7 @@ function render(character) {
 
   fillList(
     "class-features",
-    character.cls.features.concat("Subclass: " + character.cls.subclass),
+    character.cls.features.concat(character.levelFeatures),
   );
   fillList("species-traits", character.traits);
   fillList("feats", character.feats);
@@ -2178,7 +2183,9 @@ function render(character) {
   setText(
     "announce",
     character.name +
-      ", a level 1 " +
+      ", a level " +
+      character.level +
+      " " +
       character.species.name +
       " " +
       character.cls.name +
@@ -2706,7 +2713,7 @@ function sheetSections(character) {
         },
         { label: "spell save DC", value: casting.dc },
         { label: "spell attack", value: casting.attack },
-        { label: "level 1 slots", value: casting.slots },
+        { label: "spell slots", value: casting.slotTable },
         { label: "cantrips", bold: true },
         {
           label: casting.cantrips.length ? casting.cantrips.join(", ") : "none",
