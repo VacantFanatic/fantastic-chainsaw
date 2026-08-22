@@ -252,14 +252,14 @@ is stored anywhere else — no cookies, no `localStorage`.
 Deliberate choices worth remembering:
 
 - **First piece with its own stylesheet.** `character-generator.css`
-  defines a page-local `:root` palette (bone panel, orange key, small
+  defines a page-local `:root` palette (bone panel, red key, small
   black display) instead of the shared paper/ink one. `style.css` still
   supplies the type stacks. This is the "every page is allowed to be its
   own thing" rule being used on purpose.
 - **Contrast was checked, not assumed.** Every text pair on the page
-  clears 4.5:1 — including the two cuts of orange: `--orange` for fills
-  and indicator dots, `--orange-text` (darker) wherever orange is
-  actually text.
+  clears 4.5:1 — including the two cuts of red: `--signal` for fills
+  and indicator dots, `--signal-text` (darker) wherever red is
+  actually text. `--rule` is 1.3:1 and is a border colour only.
 - **Reduced motion.** The only animation is the display "searching" for
   a moment before it settles; with `prefers-reduced-motion` the sheet is
   written immediately instead. The bar meters still show the final
@@ -269,16 +269,61 @@ Deliberate choices worth remembering:
 
 Open items:
 
-1. **Proofread the rules data against the PDF.** The SRD 5.2.1 data
-   (species traits, class kits, backgrounds, spell lists) was written out
-   by hand; `media.dndbeyond.com` is blocked from the network this was
-   built on, so none of it was diffed against the source document. The
-   class starting-equipment packages and the level 1 spell lists are the
-   most likely places for a slip.
-2. **Level 1 only.** Nothing scales, and there's no level control. That's
+1. ~~**Proofread the rules data against the PDF.**~~ **Done 2026-08-22.**
+   The SRD was fetched and diffed against the data. Five things were
+   actually wrong and are now fixed:
+
+   - Dragonborn Breath Weapon was `2d6`; SRD 5.2.1 is `1d10`.
+   - Dragonborn breath *shape* was pinned per ancestry colour (Gold =
+     Cone, Black = Line, and so on). That's a 2014 rule. The Draconic
+     Ancestors table sets the damage type only; the shape is chosen at
+     each use, so the notes now read "Acid damage" and the trait line
+     carries "15 ft. Cone or 30 ft. Line".
+   - Druid armour training said `Shields (nonmetal)`. The 2024 rules
+     dropped the metal taboo — it's "Light armor and Shields".
+   - Wizard's skill list was missing Nature (SRD offers 7, we listed 6).
+   - Sickle was `1d6`; it's `1d4`.
+
+   Also removed eight spells that appear **nowhere** in SRD 5.2.1, so a
+   roll can no longer hand you a spell with no rules text to look up:
+   Blade Ward, Thorn Whip, Witch Bolt, Hail of Thorns, Armor of Agathys,
+   Arms of Hadar, Thunderous Smite, Wrathful Smite. Every spell the
+   generator can now roll was machine-checked against the SRD list for
+   its class — 0 off-list.
+
+   Checked and correct, for the record: all nine species (bar the
+   dragonborn breath above), every class's core traits table (hit die,
+   saves, skill list, weapon/armour training, starting kit and GP), the
+   weapon and armour tables, the standard array and 4d6-drop-lowest, the
+   background +2/+1 spread capped at 20, HP, AC, initiative with Alert,
+   spell save DC and attack bonus, Hunter's Mark, and the subclass names.
+
+2. **The generator is wider than the SRD, and the spec row overstates
+   the licence.** Deliberate, but worth knowing: 12 of the 16
+   backgrounds, 8 of the 12 origin feats, and 2 of the 6 fighting styles
+   (Dueling, Protection) are 2024 PHB content that is *not* in SRD 5.2.1
+   and *not* covered by CC BY 4.0. The SRD has only four backgrounds
+   (Acolyte, Criminal, Sage, Soldier — all four correct here) and four
+   origin feats (Alert, Magic Initiate, Savage Attacker, Skilled). Note
+   that `maxHp` grants +2 for **Tough**, which is one of the non-SRD
+   feats. If the "rules: SRD 5.2.1 — CC BY 4.0" row is meant literally,
+   this is the thing to resolve — either cut the extra content or
+   reword the row.
+
+3. **Level 1 only.** Nothing scales, and there's no level control. That's
    a scope choice, not an oversight — levels 2+ need class tables the
    panel has no room for.
-3. **Backgrounds always take the 50 GP option** rather than the
-   equipment package, because the packages aren't in the data yet.
-4. Attribution is in the page footer and required by CC BY 4.0 — don't
+4. **Backgrounds always take the 50 GP option** rather than the
+   equipment package, because the packages aren't in the data yet. This
+   is legal — the SRD offers exactly that choice — and the sheet says so.
+5. Attribution is in the page footer and required by CC BY 4.0 — don't
    drop it when editing.
+
+Restyled 2026-08-22 against the actual EP–1320 product page rather than
+a general impression of the brand. Colours, the 3px frame weight, the
+4px corner radius and the absence of letter-spacing are all sampled from
+teenage.engineering's own computed styles: bone `#dcd8cf`, near-black
+rule `#231f20`, signal red `#b22e20`, oxblood `#3e1815`. Body face is
+Space Grotesk standing in for their proprietary te-20; the blackletter
+accent stays UnifrakturMaguntia, which is doing the job their "swingus"
+does on the medieval unit.
