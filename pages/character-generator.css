@@ -808,7 +808,8 @@ input[type="range"]::-moz-range-thumb {
 /* ---------------------------------------------------------
    The knob row
 
-   Every knob on the machine, in the aux drawer. Nothing here says
+   Every knob on the machine, in a row under the display. Only the
+   knob itself is named -- nothing here says
    what it does: the lamp bank on the display reports what every one of
    them is set to, and turning one is how you find out what it changes.
    The caps are cut from colours each skin already defines, so they stay
@@ -820,8 +821,29 @@ input[type="range"]::-moz-range-thumb {
 .knobrow {
   display: flex;
   flex-wrap: wrap;
-  gap: 1.2rem;
-  margin-top: 0.8rem;
+  gap: 1.1rem;
+  margin-top: 1rem;
+  padding: 0.7rem 0.9rem;
+  background: var(--panel-sunk);
+  border: 1px solid var(--panel-edge);
+  border-radius: 3px;
+}
+
+.knobgroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* The knob is named; its positions are not. Same placement as the
+   transport keys -- the word is printed on the panel under the cap,
+   where a finger cannot cover it. */
+.knobgroup__label {
+  font-family: var(--mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
 }
 
 .knobgroup {
@@ -859,6 +881,23 @@ input[type="range"]::-moz-range-thumb {
 .knobgroup--tempo .knob__dial {
   background: var(--card);
   border-color: var(--key-edge);
+}
+
+/* The sixth knob in the input drawer is not a seed dial -- it is a
+   five-position switch, so it looks like the mode knobs rather than the
+   encoders it sits beside. */
+.knobgroup--level .knob__dial {
+  background: var(--signal);
+  border-color: var(--signal-edge);
+  box-shadow: 0 2px 0 var(--signal-edge);
+}
+
+.knobgroup--level .knob__pointer {
+  background: var(--card);
+}
+
+.dial--level .knob {
+  margin: 0 auto;
 }
 
 .knobgroup--cartridge .knob__dial {

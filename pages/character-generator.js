@@ -1416,8 +1416,133 @@ const ABILITY_PRIORITY = {
   wizard: ["int", "con", "dex", "wis", "cha", "str"],
 };
 
-const PROFICIENCY_BONUS = 2;
-const LEVEL = 1;
+/* ---------------------------------------------------------
+   Levels 1-5
+
+   The machine used to be a level 1 machine and said so in a constant.
+   These tables are what a level knob needs. Everything here is the 2024
+   rules as published in SRD 5.2.1.
+
+   !! NOT YET PROOFREAD AGAINST THE SRD !! Every other number in this
+   file was diffed against the document (see NOTES) and five real errors
+   fell out of that pass. These tables have not had it: the fetch was
+   blocked when they were written. Treat levels 2-5 as unverified until
+   somebody runs the same check. The level 1 column is the old data and
+   is proofread.
+   --------------------------------------------------------- */
+
+const MAX_LEVEL = 5;
+
+// Proficiency bonus is +2 through level 4 and +3 at 5.
+function proficiencyBonus(level) {
+  return 2 + Math.floor((Math.min(level, 20) - 1) / 4);
+}
+
+// Level 1 is a full hit die; every level after takes the fixed average,
+// which is the option the rules give for not rolling.
+function hitPointsFor(cls, conMod, level) {
+  const perLevel = Math.floor(cls.hitDie / 2) + 1 + conMod;
+  return cls.hitDie + conMod + Math.max(0, level - 1) * perLevel;
+}
+
+// Slots by caster kind, indexed by level, each entry [1st, 2nd, 3rd].
+const SPELL_SLOTS = {
+  full: [[2], [3], [4, 2], [4, 3], [4, 3, 2]],
+  half: [[2], [2], [3], [3], [4, 2]],
+};
+
+// Warlock counts its own slots, and they are all the same level at once.
+const PACT_MAGIC = [
+  { slots: 1, level: 1 },
+  { slots: 2, level: 1 },
+  { slots: 2, level: 2 },
+  { slots: 2, level: 2 },
+  { slots: 2, level: 3 },
+];
+
+// Cantrips and prepared spells per class, per level 1-5.
+const CASTER_PROGRESSION = {
+  bard: { kind: "full", cantrips: [2, 2, 2, 3, 3], prepared: [4, 5, 6, 7, 9] },
+  cleric: {
+    kind: "full",
+    cantrips: [3, 3, 3, 4, 4],
+    prepared: [4, 5, 6, 7, 9],
+  },
+  druid: { kind: "full", cantrips: [2, 2, 2, 3, 3], prepared: [4, 5, 6, 7, 9] },
+  sorcerer: {
+    kind: "full",
+    cantrips: [4, 4, 4, 5, 5],
+    prepared: [2, 4, 6, 7, 9],
+  },
+  wizard: {
+    kind: "full",
+    cantrips: [3, 3, 3, 4, 4],
+    prepared: [4, 5, 6, 7, 9],
+  },
+  paladin: {
+    kind: "half",
+    cantrips: [0, 0, 0, 0, 0],
+    prepared: [2, 3, 4, 5, 6],
+  },
+  ranger: {
+    kind: "half",
+    cantrips: [0, 0, 0, 0, 0],
+    prepared: [2, 3, 4, 5, 6],
+  },
+  warlock: {
+    kind: "pact",
+    cantrips: [2, 2, 2, 3, 3],
+    prepared: [2, 3, 4, 5, 6],
+  },
+};
+
+// What each class gains at 2-5. Level 1 stays on the class entry itself.
+// A subclass arrives at 3 for every 2024 class, so it is not repeated here.
+const LEVEL_FEATURES = {
+  barbarian: {
+    2: ["Danger Sense", "Reckless Attack"],
+    3: ["Primal Knowledge"],
+    5: ["Extra Attack", "Fast Movement"],
+  },
+  bard: {
+    2: ["Expertise", "Jack of All Trades"],
+    5: ["Font of Inspiration"],
+  },
+  cleric: { 2: ["Channel Divinity"], 5: ["Sear Undead"] },
+  druid: { 2: ["Wild Shape", "Wild Companion"], 5: ["Wild Resurgence"] },
+  fighter: {
+    2: ["Action Surge", "Tactical Mind"],
+    5: ["Extra Attack", "Tactical Shift"],
+  },
+  monk: {
+    2: ["Monk's Focus", "Unarmored Movement", "Uncanny Metabolism"],
+    3: ["Deflect Attacks"],
+    4: ["Slow Fall"],
+    5: ["Extra Attack", "Stunning Strike"],
+  },
+  paladin: {
+    2: ["Fighting Style", "Paladin's Smite"],
+    3: ["Channel Divinity"],
+    5: ["Extra Attack", "Faithful Steed"],
+  },
+  ranger: {
+    2: ["Deft Explorer", "Fighting Style"],
+    5: ["Extra Attack"],
+  },
+  rogue: {
+    2: ["Cunning Action"],
+    3: ["Steady Aim"],
+    5: ["Cunning Strike", "Uncanny Dodge"],
+  },
+  sorcerer: { 2: ["Font of Magic", "Metamagic"] },
+  warlock: { 2: ["Magical Cunning"] },
+  wizard: { 2: ["Scholar"], 5: ["Memorize Spell"] },
+};
+
+// The level 4 feat. The panel spends it the way it spends everything
+// else -- on what the class wants most -- and says so on the sheet.
+const ASI_LEVEL = 4;
+
 const STANDARD_ARRAY = [15, 14, 13, 12, 10, 8];
 
 function modifier(score) {
@@ -1504,16 +1629,16 @@ function applyBackgroundBoosts(scores, background, priority) {
   return { scores, boosts };
 }
 
-function attackEntry(name, dice, damageType, abilityMod, notes) {
+function attackEntry(name, dice, damageType, abilityMod, notes, proficiency) {
   return {
     name: name,
-    bonus: signed(abilityMod + PROFICIENCY_BONUS),
+    bonus: signed(abilityMod + proficiency),
     damage: dice + " " + signed(abilityMod) + " " + damageType,
     notes: notes,
   };
 }
 
-function buildAttacks(cls, mods, spellcasting) {
+function buildAttacks(cls, mods, spellcasting, proficiency) {
   const attacks = [];
   const seen = {};
 
@@ -1533,6 +1658,7 @@ function buildAttacks(cls, mods, spellcasting) {
         weapon.type,
         abilityMod,
         weapon.props + " · mastery: " + weapon.mastery,
+        proficiency,
       ),
     );
   });
@@ -1545,6 +1671,7 @@ function buildAttacks(cls, mods, spellcasting) {
         "Bludgeoning",
         Math.max(mods.str, mods.dex),
         "Martial Arts die",
+        proficiency,
       ),
     );
   }
@@ -1597,6 +1724,8 @@ function speciesFor(seed, cartridgeId) {
 }
 
 function buildCharacter(state) {
+  const level = Math.max(1, Math.min(MAX_LEVEL, state.level || 1));
+  const proficiency = proficiencyBonus(level);
   const speciesRng = makeRng("species/" + state.seeds.species);
   const speciesList = speciesListFor(state.cartridge);
   const classList = classListFor(state.cartridge);
@@ -1630,6 +1759,13 @@ function buildCharacter(state) {
   );
   const scores = boosted.scores;
 
+  // The level 4 feat, spent the way the panel spends everything else: on
+  // what the class wants most, capped at 20 like any other increase.
+  if (level >= ASI_LEVEL) {
+    const first = priority[0];
+    scores[first] = Math.min(20, scores[first] + 2);
+  }
+
   const mods = {};
   ABILITIES.forEach((ability) => {
     mods[ability] = modifier(scores[ability]);
@@ -1646,6 +1782,7 @@ function buildCharacter(state) {
   });
 
   const feats = [background.feat];
+  if (level >= ASI_LEVEL) feats.push("Ability Score Improvement");
   const traits = species.traits.slice();
 
   if (species.keenSenses) {
@@ -1685,9 +1822,9 @@ function buildCharacter(state) {
     pickMany(backgroundRng, STANDARD_LANGUAGES, 2),
   );
 
-  let maxHp = cls.hitDie + mods.con;
-  if (species.id === "dwarf") maxHp += LEVEL;
-  if (feats.indexOf("Tough") !== -1) maxHp += LEVEL * 2;
+  let maxHp = hitPointsFor(cls, mods.con, level);
+  if (species.id === "dwarf") maxHp += level;
+  if (feats.indexOf("Tough") !== -1) maxHp += level * 2;
 
   let armorClass;
   if (cls.kit.armor) {
@@ -1703,29 +1840,55 @@ function buildCharacter(state) {
   if (cls.kit.shield) armorClass += 2;
 
   const hasAlert = feats.some((feat) => feat === "Alert");
-  const initiative = mods.dex + (hasAlert ? PROFICIENCY_BONUS : 0);
+  const initiative = mods.dex + (hasAlert ? proficiency : 0);
 
   let spellcasting = null;
   if (cls.casting) {
     const list = SPELL_LISTS[cls.id];
     const spellRng = makeRng("spells/" + state.seeds.class + "/" + cls.id);
     const ability = cls.casting.ability;
+    const track = CASTER_PROGRESSION[cls.id];
+    const row = level - 1;
+
+    // Spell lists only go to first level, so higher slots are reported
+    // as slots and the prepared list stays first-level. Said out loud on
+    // the sheet rather than quietly padded with spells we don't have.
+    const pact = track.kind === "pact" ? PACT_MAGIC[row] : null;
+    const slots = pact ? null : SPELL_SLOTS[track.kind][row];
+
     spellcasting = {
       label: cls.casting.label || "Spellcasting",
       ability: ability,
       mod: signed(mods[ability]),
-      dc: 8 + PROFICIENCY_BONUS + mods[ability],
-      attack: signed(PROFICIENCY_BONUS + mods[ability]),
-      slots: cls.casting.slots,
-      cantrips: pickMany(spellRng, list.cantrips, cls.casting.cantrips),
-      prepared: pickMany(spellRng, list.first, cls.casting.prepared),
+      dc: 8 + proficiency + mods[ability],
+      attack: signed(proficiency + mods[ability]),
+      slots: pact ? pact.slots : slots[0],
+      slotTable: pact
+        ? pact.slots + " × level " + pact.level
+        : slots
+            .map((count, index) => count + " × level " + (index + 1))
+            .join(", "),
+      cantrips: pickMany(spellRng, list.cantrips, track.cantrips[row]),
+      prepared: pickMany(spellRng, list.first, track.prepared[row]),
       book: cls.casting.book || null,
     };
     if (cls.id === "ranger") spellcasting.prepared.unshift("Hunter's Mark");
   }
 
+  // Everything the class picks up between 2 and this level, in order.
+  const gained = [];
+  const table = LEVEL_FEATURES[cls.id] || {};
+  for (let step = 2; step <= level; step += 1) {
+    // Every 2024 class takes its subclass at 3.
+    if (step === 3) gained.push("Subclass: " + cls.subclass);
+    (table[step] || []).forEach((feature) => gained.push(feature));
+  }
+
   return {
     name: name,
+    level: level,
+    proficiency: proficiency,
+    levelFeatures: gained,
     alignment: pick(backgroundRng, ALIGNMENTS),
     species: species,
     lineage: lineage,
@@ -1745,7 +1908,7 @@ function buildCharacter(state) {
     armorClass: armorClass,
     initiative: initiative,
     spellcasting: spellcasting,
-    attacks: buildAttacks(cls, mods, spellcasting),
+    attacks: buildAttacks(cls, mods, spellcasting, proficiency),
     equipment: buildEquipment(cls, background),
     gold: cls.kit.gp + 50,
     heroicInspiration: species.id === "human",
@@ -1883,7 +2046,7 @@ function renderSaves(character) {
 
     const proficient = character.cls.saves.indexOf(ability) !== -1;
     const bonus =
-      character.mods[ability] + (proficient ? PROFICIENCY_BONUS : 0);
+      character.mods[ability] + (proficient ? character.proficiency : 0);
 
     row.classList.toggle("is-proficient", proficient);
     row.querySelector("[data-mod]").textContent = signed(bonus);
@@ -1979,7 +2142,7 @@ function render(character) {
   setText("initiative", signed(character.initiative));
   setText("speed", character.speed + " ft.");
   setText("size", character.size);
-  setText("prof-bonus", signed(PROFICIENCY_BONUS));
+  setText("prof-bonus", signed(character.proficiency));
   setText("hit-points", String(character.maxHp));
   setText("hit-dice", "1d" + character.cls.hitDie);
   setText("passive-perception", String(passives.perception));
@@ -2031,7 +2194,9 @@ function asPlainText(character) {
 
   lines.push(character.name);
   lines.push(
-    "Level 1 " +
+    "Level " +
+      character.level +
+      " " +
       character.species.name +
       (character.lineage ? " (" + character.lineage.name + ")" : "") +
       " " +
@@ -2067,7 +2232,7 @@ function asPlainText(character) {
       " ft. · Initiative " +
       signed(character.initiative) +
       " · PB " +
-      signed(PROFICIENCY_BONUS),
+      signed(character.proficiency),
   );
   lines.push(rule);
   lines.push("Skills: " + character.skills.join(", "));
@@ -2360,7 +2525,9 @@ function pdfHeader(doc, character, serial) {
   doc.y -= 15;
   pdfWrite(
     doc,
-    "Level 1 " +
+    "Level " +
+      character.level +
+      " " +
       character.species.name +
       (character.lineage ? " (" + character.lineage.name + ")" : "") +
       " " +
@@ -2407,8 +2574,8 @@ function skillBonus(character, skill) {
   const expert = character.expertise.indexOf(skill.name) !== -1;
   return (
     character.mods[skill.ability] +
-    (proficient ? PROFICIENCY_BONUS : 0) +
-    (expert ? PROFICIENCY_BONUS : 0)
+    (proficient ? character.proficiency : 0) +
+    (expert ? character.proficiency : 0)
   );
 }
 
@@ -2439,7 +2606,7 @@ function sheetSections(character) {
     abilities.rows.push({
       label: "saving throw",
       value: signed(
-        character.mods[ability] + (proficientSave ? PROFICIENCY_BONUS : 0),
+        character.mods[ability] + (proficientSave ? character.proficiency : 0),
       ),
       indent: 12,
       mark: proficientSave,
@@ -2473,7 +2640,7 @@ function sheetSections(character) {
       { label: "hit points", value: character.maxHp },
       { label: "hit dice", value: "1d" + character.cls.hitDie },
       { label: "initiative", value: signed(character.initiative) },
-      { label: "proficiency bonus", value: signed(PROFICIENCY_BONUS) },
+      { label: "proficiency bonus", value: signed(character.proficiency) },
       { label: "passive perception", value: passiveOf("perception") },
       { label: "passive insight", value: passiveOf("insight") },
       { label: "passive investigation", value: passiveOf("investigation") },
@@ -2721,7 +2888,7 @@ function asJson(character, serial) {
     abilities[ability] = {
       score: character.scores[ability],
       modifier: character.mods[ability],
-      save: character.mods[ability] + (proficient ? PROFICIENCY_BONUS : 0),
+      save: character.mods[ability] + (proficient ? character.proficiency : 0),
       proficientSave: proficient,
       backgroundBoost: character.boosts[ability] || 0,
     };
@@ -2739,7 +2906,7 @@ function asJson(character, serial) {
     generator: "cg-20",
     rules: "SRD 5.2.1, © Wizards of the Coast LLC, CC BY 4.0",
     name: character.name,
-    level: 1,
+    level: character.level,
     alignment: character.alignment,
     species: {
       name: character.species.name,
@@ -2756,7 +2923,7 @@ function asJson(character, serial) {
       name: character.background.name,
       tool: character.background.tool,
     },
-    proficiencyBonus: PROFICIENCY_BONUS,
+    proficiencyBonus: character.proficiency,
     abilities: abilities,
     combat: {
       armorClass: character.armorClass,
@@ -2830,6 +2997,7 @@ const state = {
   method: "array",
   setting: "generic",
   cartridge: "none",
+  level: 1,
   flourish: FLOURISHES[FLOURISH_DEFAULT].id,
   // 1 is the machine on its own. Above that it is describing a party, and
   // every member past the first is derived from this serial.
@@ -2875,6 +3043,10 @@ function serialOf(current) {
     groups.push("F" + flourish);
   }
 
+  // Level 1 writes nothing, so every serial minted before the knob
+  // existed still spells the same character.
+  if (current.level > 1) groups.push("L" + current.level);
+
   const pinned = current.nameSpecies;
   if (
     pinned &&
@@ -2906,6 +3078,10 @@ const SERIAL_TAIL = {
     key: "flourish",
     read: (value) => (FLOURISHES[value] ? FLOURISHES[value].id : null),
   },
+  L: {
+    key: "level",
+    read: (value) => (value >= 1 && value <= MAX_LEVEL ? value : null),
+  },
 };
 
 function parseSerial(text) {
@@ -2917,11 +3093,12 @@ function parseSerial(text) {
     cartridge: CARTRIDGES[0].id,
     nameSpecies: null,
     flourish: FLOURISHES[FLOURISH_DEFAULT].id,
+    level: 1,
   };
   const seen = {};
 
   while (groups.length) {
-    const match = /^([PXNF])(\d{1,2})$/.exec(groups[groups.length - 1]);
+    const match = /^([PXNFL])(\d{1,2})$/.exec(groups[groups.length - 1]);
     if (!match) break;
 
     const entry = SERIAL_TAIL[match[1]];
@@ -2966,6 +3143,7 @@ function parseSerial(text) {
     party: tail.party,
     nameSpecies: tail.nameSpecies,
     flourish: tail.flourish,
+    level: tail.level,
   };
 }
 
@@ -3709,6 +3887,25 @@ function wireCartridge() {
   setText("cartridge-note", cartridgeFor(state.cartridge).note);
 }
 
+function wireLevel() {
+  document.querySelectorAll('[name="level"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      if (!radio.checked) return;
+      state.level = Number(radio.value);
+      syncKnob("level");
+      setText("level-readout", String(state.level));
+      status("level " + state.level);
+      // A level changes hit points, proficiency and half the sheet, so
+      // this is a new character even though no seed moved.
+      commit(true);
+    });
+  });
+
+  wireKnob("level");
+  syncKnob("level");
+  setText("level-readout", String(state.level));
+}
+
 function wireFlourish() {
   document.querySelectorAll('[name="flourish"]').forEach((radio) => {
     radio.addEventListener("change", () => {
@@ -3995,6 +4192,7 @@ function wireControls() {
   wireDials();
   wireCartridge();
   wireFlourish();
+  wireLevel();
   wireParty();
   byId("midi-connect").addEventListener("click", connectMidi);
 
@@ -4024,6 +4222,7 @@ function applySerial(parsed) {
   state.setting = parsed.setting;
   state.cartridge = parsed.cartridge;
   state.flourish = parsed.flourish;
+  state.level = parsed.level;
   state.party = parsed.party;
   state.nameSpecies = parsed.nameSpecies;
 
@@ -4035,13 +4234,14 @@ function applySerial(parsed) {
   if (readout) {
     readout.textContent = state.party > 1 ? "party of " + state.party : "solo";
   }
-  setText("cartridge-note", cartridgeFor(state.cartridge).note);
+  setText("level-readout", String(state.level));
 
   [
     ["method", state.method],
     ["setting", state.setting],
     ["cartridge", state.cartridge],
     ["flourish", state.flourish],
+    ["level", String(state.level)],
   ].forEach((pair) => {
     const radio = document.querySelector(
       '[name="' + pair[0] + '"][value="' + pair[1] + '"]',
