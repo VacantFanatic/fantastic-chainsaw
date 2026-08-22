@@ -380,15 +380,25 @@ Deliberate choices worth remembering:
   that wants to rebuild the machine should use the serial, which is in
   the file along with the CC BY attribution. All three exports share one
   `downloadFile`/`exportName` pair and name files `<slug>-<serial>.<ext>`.
-- **INPUT patches text into a channel, and costs the serial nothing.** A
-  patched channel is a seed minted from a hash of your text instead of
-  from `Math.random`, and `mintSeed` now mints all three kinds -- rolled,
-  patched, derived -- so nothing downstream can tell them apart. The text
-  itself goes nowhere: not to the serial, not to the address bar, not to
-  storage. What survives is the four characters it hashed to, which is
-  the only thing a link ever carried anyway. Patching engages the
-  channel's hold, because a live input shouldn't be overwritten by the
-  next roll; unplugging releases the hold and leaves the seed alone.
+- **INPUT is five seed dials.** It began as five text fields -- paste
+  anything, get a character -- but a text box was the least tactile thing
+  on a panel built out of knobs, so it became an endless encoder per
+  channel. Each dial keeps an _anchor_ (the seed the channel held when
+  dialling began) and an offset either side of it, so the walk is
+  reversible: turn back and the character you just passed comes back
+  exactly, which a stream of fresh random seeds could never do. The dial
+  re-anchors itself whenever the channel's seed moves by some other route
+  -- a roll, a take, a link -- by noticing that the seed is no longer the
+  one its offset predicts. Nothing has to tell it.
+  Dialling engages the channel's hold, because a value set by hand
+  shouldn't be overwritten by the next roll. It commits without the
+  search animation and records no take: a spin would otherwise scramble
+  the display once per detent and bury the sixteen-slot reel. The dial is
+  its own undo -- turn it the other way.
+  It is also the first knob on the panel that is a real control rather
+  than a pointer affordance over hidden radios. The mode knobs _choose_
+  from a list, so radios were right; this one _steps_ a value, so it is a
+  `spinbutton` that takes focus itself and answers to the arrow keys.
 - **A patched species is a species change.** The name pin added earlier
   lived inside `rollChannels`, but rolling is no longer the only way a
   channel moves. That logic is now `pinNameFor`, called by both paths, or

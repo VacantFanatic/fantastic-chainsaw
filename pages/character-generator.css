@@ -362,52 +362,61 @@
   color: var(--ink-soft);
 }
 
-/* --- input: five jacks, numbered like the deck ------------------------ */
-.jacks {
+/* --- input: five seed dials, numbered like the deck ------------------ */
+.dials {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.5rem;
-  margin-top: 0.7rem;
+  gap: 0.6rem;
+  margin-top: 0.8rem;
 }
 
-.jack {
+.dial {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
 }
 
-.jack__num {
+.dial__num {
   font-family: var(--mono);
   font-size: 0.6rem;
   color: var(--ink-soft);
 }
 
-.jack__label {
+.dial__label {
   font-size: 0.7rem;
   color: var(--ink);
 }
 
-.jack input {
+/* The seed under the dial is the whole readout: it is what the knob is
+   actually setting, and what the serial will carry. */
+.dial__seed {
   font-family: var(--mono);
-  font-size: 0.75rem;
-  color: var(--ink);
-  width: 100%;
-  min-height: 32px;
-  padding: 0.35rem 0.5rem;
-  background: var(--card);
-  border: 1px solid var(--key-edge);
-  border-radius: 2px;
-}
-
-.jack input::placeholder {
+  font-size: 0.7rem;
   color: var(--ink-soft);
+  letter-spacing: 0.04em;
 }
 
-/* A patched jack reads as live at a glance, and not by colour alone --
-   the border thickens on the side the cable would enter. */
-.jack.is-patched input {
-  border-color: var(--signal-edge);
-  border-left-width: 3px;
+/* Unlike the mode knobs this one is a real control rather than a pointer
+   affordance over hidden radios -- it steps a value instead of choosing
+   from a list, so it is a spinbutton and takes focus itself. */
+.knob--dial {
+  cursor: grab;
+}
+
+.knob--dial:active {
+  cursor: grabbing;
+}
+
+.knob--dial:focus-visible {
+  outline: 2px solid var(--signal-text);
+  outline-offset: 3px;
+}
+
+.dial.is-dialled .dial__seed {
+  color: var(--signal-text);
+  font-weight: 700;
 }
 
 /* --- sync: the party list --------------------------------------------- */
@@ -1641,8 +1650,8 @@ input[type="range"]::-moz-range-thumb {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .jacks {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .dials {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .spell-lists {

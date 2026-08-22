@@ -1370,11 +1370,14 @@ function randomSeed() {
   return mintSeed(Math.random);
 }
 
-// The INPUT port. Text goes in, a seed comes out, and the text itself
-// goes nowhere -- not to the serial, not to the address bar, not to
-// storage. What survives is the four characters it hashed to.
-function seedFromText(text) {
-  return mintSeed(makeRng("patch/" + text));
+// The INPUT port. A dial walks a channel through seeds: offset 0 is
+// wherever the channel already was, and every step either side derives
+// from that anchor, so turning back really does bring back what you just
+// passed. Nothing here is stored -- the seed it lands on is in the
+// serial like any other, which is the only record the machine keeps.
+function seedFromDial(anchor, offset) {
+  if (offset === 0) return anchor;
+  return mintSeed(makeRng("dial/" + anchor + "/" + offset));
 }
 
 function pick(rng, list) {
@@ -1831,10 +1834,7 @@ function syncPorts() {
     port.classList.toggle("is-live", !!live[port.getAttribute("data-port")]);
   });
 
-  document.querySelectorAll("[data-patch]").forEach((field) => {
-    const channel = field.getAttribute("data-patch");
-    field.parentNode.classList.toggle("is-patched", !!state.patched[channel]);
-  });
+  syncDials();
 }
 
 function setBars(values) {
@@ -2997,10 +2997,12 @@ function scramble(length) {
    --------------------------------------------------------- */
 
 const TAKE_LIMIT = 16;
-const takes = { list: [], index: -1, stepping: false };
+// suppressed covers anything that is its own undo: stepping the reel,
+// and dialling, which would otherwise flood sixteen slots in one spin.
+const takes = { list: [], index: -1, suppressed: false };
 
 function recordTake(serial) {
-  if (takes.stepping) return;
+  if (takes.suppressed) return;
   if (takes.list[takes.index] === serial) return;
 
   // A new take after stepping back discards the future, like recording
@@ -3032,11 +3034,11 @@ function stepTake(delta) {
     return;
   }
 
-  takes.stepping = true;
+  takes.suppressed = true;
   applySerial(parseSerial(takes.list[target]));
   takes.index = target;
   commit(false);
-  takes.stepping = false;
+  takes.suppressed = false;
 
   syncTakeReadout();
   status("take " + (target + 1) + " of " + takes.list.length);
@@ -3511,55 +3513,176 @@ function wirePorts() {
   });
 }
 
-// A cable is live while you type, so the field commits a beat after the
-// last keystroke rather than on every one.
-let patchTimer = null;
+/* ---------------------------------------------------------
+   INPUT -- five seed dials
 
-function patchChannel(channel, text) {
-  const dip = document.querySelector('[data-hold="' + channel + '"]');
+   An endless encoder per channel rather than a switch: there is no list
+   of positions to choose from, only a value to walk. Each dial keeps an
+   anchor (the seed the channel held when dialling began) and an offset
+   either side of it, so the sequence is reversible -- turn back and the
+   character you just passed comes back exactly.
 
-  if (!text) {
-    // Unplugging releases the hold but leaves the seed alone: pulling a
-    // cable out shouldn't re-roll the character it was feeding.
-    delete state.patched[channel];
-    state.holds[channel] = false;
-    if (dip) dip.checked = false;
-    syncLamps();
-    syncPorts();
-    status(channel + " unpatched");
-    return;
+   The anchor re-takes itself whenever the channel's seed changes by some
+   other route: a roll, a take, a serial off the address bar. Nothing has
+   to tell the dial that happened; it notices.
+   --------------------------------------------------------- */
+
+const DIAL_STEP_DEGREES = 30;
+const dials = {};
+
+function dialFor(channel) {
+  const dial = dials[channel];
+  // Anchored to a seed the channel no longer holds, so something else
+  // moved it and this dial starts again from where it is now.
+  if (
+    !dial ||
+    seedFromDial(dial.anchor, dial.offset) !== state.seeds[channel]
+  ) {
+    dials[channel] = { anchor: state.seeds[channel], offset: 0 };
   }
+  return dials[channel];
+}
 
-  // A patched species is a species change as far as a held name is
+function stepDial(channel, delta) {
+  const dial = dialFor(channel);
+  dial.offset += delta;
+
+  // A dialled species is a species change as far as a held name is
   // concerned, exactly as a rolled one would be.
   pinNameFor([channel]);
 
-  state.seeds[channel] = seedFromText(text);
-  state.patched[channel] = true;
-  state.holds[channel] = true;
-  if (dip) dip.checked = true;
+  state.seeds[channel] = seedFromDial(dial.anchor, dial.offset);
+  state.patched[channel] = dial.offset !== 0;
 
-  status(channel + " patched");
-  commit(true);
+  // Dialling holds the channel, so the next roll leaves it alone -- the
+  // same bargain the panel already makes for anything set by hand.
+  const dip = document.querySelector('[data-hold="' + channel + '"]');
+  if (dial.offset !== 0) {
+    state.holds[channel] = true;
+    if (dip) dip.checked = true;
+  }
+
+  // No animation and no take: a spin would otherwise scramble the display
+  // once per detent and bury the reel sixteen deep. The dial undoes
+  // itself by turning the other way.
+  takes.suppressed = true;
+  commit(false);
+  takes.suppressed = false;
+
+  syncDials();
+  status(channel + " — " + state.seeds[channel]);
 }
 
-function wirePatchBay() {
-  document.querySelectorAll("[data-patch]").forEach((field) => {
-    field.addEventListener("input", () => {
-      window.clearTimeout(patchTimer);
-      patchTimer = window.setTimeout(() => {
-        patchChannel(field.getAttribute("data-patch"), field.value.trim());
-      }, 400);
-    });
+function syncDials() {
+  document.querySelectorAll("[data-dial]").forEach((knob) => {
+    const channel = knob.getAttribute("data-dial");
+    const dial = dials[channel];
+    const offset = dial ? dial.offset : 0;
+    const seed = state.seeds[channel];
+
+    const face = knob.querySelector("[data-knob-dial]");
+    if (face) {
+      face.style.transform = "rotate(" + offset * DIAL_STEP_DEGREES + "deg)";
+    }
+
+    knob.setAttribute("aria-valuenow", String(offset));
+    knob.setAttribute("aria-valuetext", "seed " + seed);
+
+    const readout = document.querySelector(
+      '[data-dial-seed="' + channel + '"]',
+    );
+    if (readout) readout.textContent = seed;
+
+    const row = knob.parentNode;
+    if (row) row.classList.toggle("is-dialled", offset !== 0);
   });
 }
 
-// Loading a serial pulls every cable: the text behind a patch is not in
-// the serial, so a patched channel cannot survive a link.
+function wireDials() {
+  document.querySelectorAll("[data-dial]").forEach((knob) => {
+    const channel = knob.getAttribute("data-dial");
+
+    // The ticks are drawn once, evenly, and spin past the pointer: an
+    // endless encoder has no detent to sit on.
+    const holder = knob.querySelector("[data-knob-ticks]");
+    if (holder) {
+      holder.textContent = "";
+      for (let i = 0; i < 12; i += 1) {
+        const tick = document.createElement("span");
+        tick.className = "knob__tick";
+        tick.style.transform = "rotate(" + i * DIAL_STEP_DEGREES + "deg)";
+        holder.appendChild(tick);
+      }
+    }
+
+    let dragging = false;
+    let moved = false;
+    let last = 0;
+
+    knob.addEventListener("pointerdown", (event) => {
+      dragging = true;
+      moved = false;
+      last = pointerAngle(knob, event);
+      try {
+        knob.setPointerCapture(event.pointerId);
+      } catch (error) {
+        // No live pointer for this id; the drag still works without it.
+      }
+    });
+
+    knob.addEventListener("pointermove", (event) => {
+      if (!dragging) return;
+      const angle = pointerAngle(knob, event);
+      let delta = angle - last;
+      // Crossing the top wraps from +180 to -180; unwrap it so a slow
+      // turn past twelve o'clock does not fly back the other way.
+      if (delta > 180) delta -= 360;
+      if (delta < -180) delta += 360;
+
+      if (Math.abs(delta) >= DIAL_STEP_DEGREES) {
+        const steps = Math.trunc(delta / DIAL_STEP_DEGREES);
+        last = angle;
+        moved = true;
+        stepDial(channel, steps);
+      }
+    });
+
+    const release = () => {
+      if (dragging && !moved) stepDial(channel, 1);
+      dragging = false;
+    };
+    knob.addEventListener("pointerup", release);
+    knob.addEventListener("pointercancel", () => {
+      dragging = false;
+    });
+
+    knob.addEventListener(
+      "wheel",
+      (event) => {
+        event.preventDefault();
+        stepDial(channel, event.deltaY > 0 ? 1 : -1);
+      },
+      { passive: false },
+    );
+
+    knob.addEventListener("keydown", (event) => {
+      const forward = event.key === "ArrowRight" || event.key === "ArrowUp";
+      const back = event.key === "ArrowLeft" || event.key === "ArrowDown";
+      if (!forward && !back) return;
+      event.preventDefault();
+      stepDial(channel, forward ? 1 : -1);
+    });
+  });
+
+  syncDials();
+}
+
+// A serial off the address bar is a different character, so every dial
+// lets go of its anchor and the channels stop reading as dialled.
 function clearPatches() {
   state.patched = {};
-  document.querySelectorAll("[data-patch]").forEach((field) => {
-    field.value = "";
+  Object.keys(dials).forEach((channel) => {
+    delete dials[channel];
   });
 }
 
@@ -3864,7 +3987,7 @@ function wireControls() {
   syncKnob("setting");
 
   wirePorts();
-  wirePatchBay();
+  wireDials();
   wireCartridge();
   wireFlourish();
   wireParty();
