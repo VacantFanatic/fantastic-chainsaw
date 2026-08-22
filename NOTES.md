@@ -491,6 +491,32 @@ in this browser`, or `needs https or localhost` rather than failing
     character. The radios were synced from state, which hid it -- the
     fix is one line, and the lesson is the same as the name pin's:
     every field the serial carries must round-trip through applySerial.
+- **Every knob lives in the aux drawer now, and none of them are
+  labelled.** The panel had grown a column of fieldsets down its right
+  side, each knob explaining itself in a list of words beside it. That is
+  not what the machines this thing is modelled on do: they put the
+  controls out and let the display say what is going on. So the five
+  knobs -- cartridge, ability scores, setting, flourish, tempo -- moved
+  into the aux bay in one row, the option lists went away, and the lamp
+  bank grew a tempo group so that every knob on the machine is now
+  reported on the display. Turning one is how you find out what it does.
+  Three things keep that from being merely obscure:
+  - **The radios are clipped, not removed.** Same `.sr-only` technique
+    the panel already used, so every option keeps its name for a screen
+    reader, stays in the tab order, and still answers to the arrow keys.
+    Measured at 1x1 with the labels intact -- invisible, not gone.
+  - **Colour tells the knobs apart, never what they mean.** Five caps cut
+    from tokens each skin already defines, so they stay distinguishable
+    in all five palettes without a new token. The lamps carry the
+    meaning, so nothing here rests on colour alone. The pointer flips
+    light or dark to stay legible on its own cap: weakest pair measured
+    at 4.6:1, well past the 3:1 a graphic needs.
+  - **The one honest disclosure stayed.** The setting knob only re-skins
+    the panel, and the fieldset used to say so in as many words. Dropping
+    that with the other labels would have let the machine imply the
+    setting does more than it does, so the sentence moved to the note
+    under the serial rather than disappearing. Not spelling things out is
+    a style; misleading someone is not.
 
 Open items:
 

@@ -283,44 +283,203 @@
         <section class="bay" id="bay-aux" data-bay="aux" hidden>
           <div class="bay__inner">
             <div class="bay__panel">
-              <h3 class="bay__title">aux &mdash; cartridge</h3>
-              <div class="mode__body">
-                <div class="knob" data-knob="cartridge" aria-hidden="true">
-                  <span class="knob__ticks" data-knob-ticks></span>
-                  <span class="knob__dial" data-knob-dial>
-                    <span class="knob__pointer"></span>
-                  </span>
-                </div>
-                <div class="mode__opts">
-                  <label class="mode__opt">
-                    <input type="radio" name="cartridge" value="none" checked />
-                    <span>no cartridge</span>
-                  </label>
-                  <label class="mode__opt">
-                    <input type="radio" name="cartridge" value="casters" />
-                    <span>casters only</span>
-                  </label>
-                  <label class="mode__opt">
-                    <input type="radio" name="cartridge" value="martial" />
-                    <span>no magic</span>
-                  </label>
-                  <label class="mode__opt">
-                    <input type="radio" name="cartridge" value="no-humans" />
-                    <span>no humans</span>
-                  </label>
-                  <label class="mode__opt">
-                    <input type="radio" name="cartridge" value="small-folk" />
-                    <span>small folk</span>
-                  </label>
-                  <label class="mode__opt">
-                    <input type="radio" name="cartridge" value="frontline" />
-                    <span>frontline</span>
-                  </label>
-                </div>
+              <h3 class="bay__title">aux</h3>
+              <div class="knobrow">
+                <fieldset class="knobgroup knobgroup--cartridge">
+                  <legend class="sr-only">cartridge</legend>
+                  <div class="knob" data-knob="cartridge" aria-hidden="true">
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <div class="sr-only">
+                    <div class="mode__opts">
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="cartridge"
+                          value="none"
+                          checked
+                        />
+                        <span>no cartridge</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="cartridge" value="casters" />
+                        <span>casters only</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="cartridge" value="martial" />
+                        <span>no magic</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="cartridge"
+                          value="no-humans"
+                        />
+                        <span>no humans</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="cartridge"
+                          value="small-folk"
+                        />
+                        <span>small folk</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="cartridge"
+                          value="frontline"
+                        />
+                        <span>frontline</span>
+                      </label>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="knobgroup knobgroup--scores">
+                  <legend class="sr-only">ability scores</legend>
+                  <div class="knob" data-knob="method" aria-hidden="true">
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <div class="sr-only">
+                    <div class="mode__opts">
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="method"
+                          value="array"
+                          checked
+                        />
+                        <span>standard array</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="method" value="gritty" />
+                        <span>3d6 &mdash; gritty</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="method" value="dice" />
+                        <span>4d6, drop lowest</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="method" value="heroic" />
+                        <span>reroll 1s &mdash; heroic</span>
+                      </label>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="knobgroup knobgroup--setting">
+                  <legend class="sr-only">campaign setting</legend>
+                  <div class="knob" data-knob="setting" aria-hidden="true">
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <div class="sr-only">
+                    <div class="mode__opts">
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="setting"
+                          value="generic"
+                          checked
+                        />
+                        <span>generic</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="setting"
+                          value="forgotten-realms"
+                        />
+                        <span>forgotten realms</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="setting" value="greyhawk" />
+                        <span>greyhawk</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="setting" value="dark-sun" />
+                        <span>dark sun</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="setting"
+                          value="dragonlance"
+                        />
+                        <span>dragonlance</span>
+                      </label>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="knobgroup knobgroup--flourish">
+                  <legend class="sr-only">name flourish</legend>
+                  <div class="knob" data-knob="flourish" aria-hidden="true">
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <div class="sr-only">
+                    <div class="mode__opts">
+                      <label class="mode__opt">
+                        <input type="radio" name="flourish" value="plain" />
+                        <span>plain</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="flourish"
+                          value="weathered"
+                          checked
+                        />
+                        <span>weathered</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="flourish" value="baroque" />
+                        <span>baroque</span>
+                      </label>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="knobgroup knobgroup--tempo">
+                  <legend class="sr-only">transport tempo</legend>
+                  <div class="knob" data-knob="tempo" aria-hidden="true">
+                    <span class="knob__ticks" data-knob-ticks></span>
+                    <span class="knob__dial" data-knob-dial>
+                      <span class="knob__pointer"></span>
+                    </span>
+                  </div>
+                  <div class="sr-only">
+                    <div class="mode__opts">
+                      <label class="mode__opt">
+                        <input type="radio" name="tempo" value="slow" />
+                        <span>slow</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input
+                          type="radio"
+                          name="tempo"
+                          value="medium"
+                          checked
+                        />
+                        <span>medium</span>
+                      </label>
+                      <label class="mode__opt">
+                        <input type="radio" name="tempo" value="fast" />
+                        <span>fast</span>
+                      </label>
+                    </div>
+                  </div>
+                </fieldset>
               </div>
-              <p class="bay__note" id="cartridge-note">
-                no cartridge &mdash; the machine rolls the whole book.
-              </p>
             </div>
           </div>
         </section>
@@ -506,6 +665,28 @@
             </li>
           </ul>
 
+          <p class="lamps__head">tempo</p>
+          <ul class="lamps">
+            <li class="lamp" data-lamp="tempo-slow">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="5.5" />
+                <path d="M8 4.6V8l2.2 1.6" /></svg
+              >slow
+            </li>
+            <li class="lamp" data-lamp="tempo-medium">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="5.5" />
+                <path d="M8 4.2V8l3 1.4" /></svg
+              >med
+            </li>
+            <li class="lamp" data-lamp="tempo-fast">
+              <svg class="lamp__icon" viewBox="0 0 16 16">
+                <circle cx="8" cy="8" r="5.5" />
+                <path d="M8 3.6V8l3.4.6" /></svg
+              >fast
+            </li>
+          </ul>
+
           <p class="lamps__head">flourish</p>
           <ul class="lamps">
             <li class="lamp" data-lamp="flourish">
@@ -587,32 +768,6 @@
               <span class="tkey__label">play</span>
             </div>
           </div>
-
-          <fieldset class="mode mode--tempo">
-            <legend>tempo</legend>
-            <div class="mode__body">
-              <div class="knob" data-knob="tempo" aria-hidden="true">
-                <span class="knob__ticks" data-knob-ticks></span>
-                <span class="knob__dial" data-knob-dial>
-                  <span class="knob__pointer"></span>
-                </span>
-              </div>
-              <div class="mode__opts">
-                <label class="mode__opt">
-                  <input type="radio" name="tempo" value="slow" />
-                  <span>slow</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="tempo" value="medium" checked />
-                  <span>medium</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="tempo" value="fast" />
-                  <span>fast</span>
-                </label>
-              </div>
-            </div>
-          </fieldset>
         </div>
 
         <div class="channels">
@@ -721,121 +876,6 @@
             </label>
           </div>
         </div>
-
-        <div class="unit__side">
-          <fieldset class="mode">
-            <legend>ability scores</legend>
-
-            <div class="mode__body">
-              <!-- Decorative. The radios below are the real control: they stay
-                   focusable and keyboard-navigable, and the knob is a pointer
-                   affordance layered over them. -->
-              <div class="knob" data-knob="method" aria-hidden="true">
-                <span class="knob__ticks" data-knob-ticks></span>
-                <span class="knob__dial" data-knob-dial>
-                  <span class="knob__pointer"></span>
-                </span>
-              </div>
-
-              <div class="mode__opts">
-                <label class="mode__opt">
-                  <input type="radio" name="method" value="array" checked />
-                  <span>standard array</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="method" value="gritty" />
-                  <span>3d6 &mdash; gritty</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="method" value="dice" />
-                  <span>4d6, drop lowest</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="method" value="heroic" />
-                  <span>reroll 1s &mdash; heroic</span>
-                </label>
-              </div>
-            </div>
-          </fieldset>
-
-          <fieldset class="mode">
-            <legend>setting</legend>
-
-            <div class="mode__body">
-              <div class="knob" data-knob="setting" aria-hidden="true">
-                <span class="knob__ticks" data-knob-ticks></span>
-                <span class="knob__dial" data-knob-dial>
-                  <span class="knob__pointer"></span>
-                </span>
-              </div>
-
-              <div class="mode__opts">
-                <label class="mode__opt">
-                  <input type="radio" name="setting" value="generic" checked />
-                  <span>generic</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="setting" value="forgotten-realms" />
-                  <span>forgotten realms</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="setting" value="greyhawk" />
-                  <span>greyhawk</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="setting" value="dark-sun" />
-                  <span>dark sun</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="setting" value="dragonlance" />
-                  <span>dragonlance</span>
-                </label>
-              </div>
-            </div>
-            <p class="mode__note">
-              changes the panel only &mdash; species, bonuses and spell lists
-              are still generic for every setting.
-            </p>
-          </fieldset>
-
-          <fieldset class="mode">
-            <legend>flourish</legend>
-
-            <div class="mode__body">
-              <div class="knob" data-knob="flourish" aria-hidden="true">
-                <span class="knob__ticks" data-knob-ticks></span>
-                <span class="knob__dial" data-knob-dial>
-                  <span class="knob__pointer"></span>
-                </span>
-              </div>
-
-              <div class="mode__opts">
-                <label class="mode__opt">
-                  <input type="radio" name="flourish" value="plain" />
-                  <span>plain</span>
-                </label>
-                <label class="mode__opt">
-                  <input
-                    type="radio"
-                    name="flourish"
-                    value="weathered"
-                    checked
-                  />
-                  <span>weathered</span>
-                </label>
-                <label class="mode__opt">
-                  <input type="radio" name="flourish" value="baroque" />
-                  <span>baroque</span>
-                </label>
-              </div>
-            </div>
-            <p class="mode__note">
-              how ornamented a name may be &mdash; from &ldquo;Vorrun
-              Hillreach&rdquo; to &ldquo;Vorrun Hillreach, the
-              Twice-Buried&rdquo;.
-            </p>
-          </fieldset>
-        </div>
       </div>
 
       <p class="unit__serial">
@@ -845,7 +885,9 @@
           character. <b>hold</b> keeps a channel across a roll; a held name
           keeps the species it was named for too. ability scores are always
           arranged the way the class wants them, so re-rolling class re-sorts
-          held numbers. press <kbd>r</kbd> to roll.
+          held numbers. the setting knob changes the panel only &mdash; species,
+          bonuses and spell lists are generic whichever way it is turned. press
+          <kbd>r</kbd> to roll. the rest is for finding out.
         </span>
       </p>
     </section>
