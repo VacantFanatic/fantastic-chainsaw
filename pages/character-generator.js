@@ -2031,6 +2031,151 @@ function copySheet() {
   );
 }
 
+/* ---------------------------------------------------------
+   The ability-score knob
+
+   A rotary switch over the method radios. The radios stay the real
+   control -- they hold the value, take focus, and answer to the arrow
+   keys -- and the dial is turned to match. Everything here is a second
+   way to drive them, never the only way.
+   --------------------------------------------------------- */
+
+// How far the dial swings from centre, in degrees. The detents are spread
+// evenly across it, so adding a third method needs no change here.
+const KNOB_SPREAD = 38;
+
+// A drag shorter than this is treated as a click on the knob, which steps
+// to the next position the way a real rotary switch does.
+const KNOB_DRAG_SLOP = 4;
+
+function methodRadios() {
+  return Array.prototype.slice.call(
+    document.querySelectorAll('[name="method"]'),
+  );
+}
+
+function knobAngle(index, count) {
+  if (count < 2) return 0;
+  return -KNOB_SPREAD + (index / (count - 1)) * KNOB_SPREAD * 2;
+}
+
+function syncKnob() {
+  const knob = document.querySelector("[data-knob]");
+  if (!knob) return;
+  const radios = methodRadios();
+  const index = radios.findIndex((radio) => radio.checked);
+  if (index === -1) return;
+
+  const dial = knob.querySelector("[data-knob-dial]");
+  if (dial) {
+    dial.style.transform = "rotate(" + knobAngle(index, radios.length) + "deg)";
+  }
+  knob.setAttribute("data-position", String(index));
+}
+
+// Select by index and let the existing radio handler do the rest, so the
+// knob and the keyboard end up on exactly one code path.
+function setMethodIndex(index) {
+  const radios = methodRadios();
+  const clamped = Math.max(0, Math.min(radios.length - 1, index));
+  const radio = radios[clamped];
+  if (!radio || radio.checked) return;
+  radio.checked = true;
+  radio.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function currentMethodIndex() {
+  return methodRadios().findIndex((radio) => radio.checked);
+}
+
+// Pointer angle measured from the knob's centre: 0 at the top, positive
+// clockwise, which is the same convention as the CSS rotation.
+function pointerAngle(knob, event) {
+  const box = knob.getBoundingClientRect();
+  const dx = event.clientX - (box.left + box.width / 2);
+  const dy = event.clientY - (box.top + box.height / 2);
+  return (Math.atan2(dx, -dy) * 180) / Math.PI;
+}
+
+function nearestDetent(angle, count) {
+  let best = 0;
+  let bestGap = Infinity;
+  for (let i = 0; i < count; i += 1) {
+    const gap = Math.abs(angle - knobAngle(i, count));
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = i;
+    }
+  }
+  return best;
+}
+
+function wireKnob() {
+  const knob = document.querySelector("[data-knob]");
+  if (!knob) return;
+
+  let dragging = false;
+  let moved = false;
+
+  // Capture keeps a drag alive if the pointer leaves the knob. It can throw
+  // when there is no live pointer for the id -- a stale or synthetic event --
+  // and an exception here would take the whole drag down with it.
+  const capture = (event, take) => {
+    try {
+      if (take) knob.setPointerCapture(event.pointerId);
+      else if (knob.hasPointerCapture(event.pointerId)) {
+        knob.releasePointerCapture(event.pointerId);
+      }
+    } catch (ignored) {
+      /* dragging still works without capture */
+    }
+  };
+
+  knob.addEventListener("pointerdown", (event) => {
+    dragging = true;
+    moved = false;
+    capture(event, true);
+    event.preventDefault();
+  });
+
+  knob.addEventListener("pointermove", (event) => {
+    if (!dragging) return;
+    const count = methodRadios().length;
+    const angle = pointerAngle(knob, event);
+    // Ignore the first few degrees so a plain click doesn't register as a
+    // drag and snap somewhere the user didn't intend.
+    if (!moved) {
+      const resting = knobAngle(currentMethodIndex(), count);
+      if (Math.abs(angle - resting) < KNOB_DRAG_SLOP) return;
+      moved = true;
+    }
+    setMethodIndex(nearestDetent(angle, count));
+  });
+
+  const release = (event) => {
+    if (!dragging) return;
+    dragging = false;
+    capture(event, false);
+    // A click, not a drag: step to the next position and wrap.
+    if (!moved) {
+      const count = methodRadios().length;
+      setMethodIndex((currentMethodIndex() + 1) % count);
+    }
+  };
+
+  knob.addEventListener("pointerup", release);
+  knob.addEventListener("pointercancel", release);
+
+  knob.addEventListener(
+    "wheel",
+    (event) => {
+      event.preventDefault();
+      setMethodIndex(currentMethodIndex() + (event.deltaY > 0 ? 1 : -1));
+    },
+    { passive: false },
+  );
+}
+
 function wireControls() {
   byId("roll").addEventListener("click", () => {
     const open = CHANNELS.filter((channel) => !state.holds[channel]);
@@ -2062,6 +2207,7 @@ function wireControls() {
     radio.addEventListener("change", () => {
       if (!radio.checked) return;
       state.method = radio.value;
+      syncKnob();
       status(
         radio.value === "array"
           ? "standard array 15/14/13/12/10/8"
@@ -2070,6 +2216,9 @@ function wireControls() {
       commit(true);
     });
   });
+
+  wireKnob();
+  syncKnob();
 
   byId("copy").addEventListener("click", copySheet);
 

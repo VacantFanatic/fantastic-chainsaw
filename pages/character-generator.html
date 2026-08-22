@@ -192,14 +192,30 @@
         <div class="unit__side">
           <fieldset class="mode">
             <legend>ability scores</legend>
-            <label class="mode__opt">
-              <input type="radio" name="method" value="array" checked />
-              <span>standard array</span>
-            </label>
-            <label class="mode__opt">
-              <input type="radio" name="method" value="dice" />
-              <span>4d6, drop lowest</span>
-            </label>
+
+            <div class="mode__body">
+              <!-- Decorative. The radios below are the real control: they stay
+                   focusable and keyboard-navigable, and the knob is a pointer
+                   affordance layered over them. -->
+              <div class="knob" data-knob aria-hidden="true">
+                <span class="knob__tick knob__tick--a"></span>
+                <span class="knob__tick knob__tick--b"></span>
+                <span class="knob__dial" data-knob-dial>
+                  <span class="knob__pointer"></span>
+                </span>
+              </div>
+
+              <div class="mode__opts">
+                <label class="mode__opt">
+                  <input type="radio" name="method" value="array" checked />
+                  <span>standard array</span>
+                </label>
+                <label class="mode__opt">
+                  <input type="radio" name="method" value="dice" />
+                  <span>4d6, drop lowest</span>
+                </label>
+              </div>
+            </div>
           </fieldset>
 
           <button class="key key--wide" id="copy" type="button">

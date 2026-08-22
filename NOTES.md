@@ -287,6 +287,16 @@ Deliberate choices worth remembering:
   scores either way.
 - **Print styles.** Printing hides the panel and prints the sheet in two
   columns, because a character sheet you can't print is a bit of a joke.
+- **The ability-score selector is a knob, not radio buttons.** A rotary
+  switch is what the panel would actually have. The radios are still the
+  real control though: they hold the value, take focus, and answer to the
+  arrow keys, and the dial is turned to match. The knob is `aria-hidden`
+  and is a second way to drive them (click steps, drag turns, wheel
+  steps), never the only way. The inputs are hidden with the same clip
+  technique as `.sr-only` rather than `opacity: 0` or `display: none`,
+  because they have to stay focusable. `KNOB_SPREAD` and the detent maths
+  are written for N positions, so a third method is a data change rather
+  than a rewrite.
 
 Open items:
 
