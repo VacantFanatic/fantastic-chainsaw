@@ -9,12 +9,12 @@
       href="https://fonts.googleapis.com/css2?family=Almendra:wght@400;700&family=Cinzel:wght@400;700&family=Grenze+Gotisch:wght@500;700&family=IM+Fell+English&family=Metamorphous&family=Space+Grotesk:wght@400;500;700&family=Space+Mono:wght@400;700&family=UnifrakturMaguntia&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../../css/style.css" />
     <link rel="stylesheet" href="character-generator.css" />
   </head>
   <body class="page-forge">
     <header class="topbar">
-      <a class="topbar__back" href="../index.html">&larr; index</a>
+      <a class="topbar__back" href="../../index.html">&larr; index</a>
       <span class="topbar__model">cg&ndash;20</span>
       <span class="topbar__site">static</span>
     </header>
@@ -1372,10 +1372,23 @@
         engineering. the panel is an homage, drawn in CSS.
       </p>
       <p class="colophon__line">
-        <a href="../index.html">&larr; back to the index</a>
+        <a href="../../index.html">&larr; back to the index</a>
       </p>
     </footer>
 
+    <script src="character-generator-data.js"></script>
+    <!-- One <script> per setting, registering into SETTINGS (see the
+         comment above that array in character-generator-data.js). Order
+         doesn't affect correctness -- DEFAULT_SETTING_ID marks the
+         fallback, not array position -- but generic reads first here as
+         the base case. -->
+    <script src="settings/generic.js"></script>
+    <script src="settings/forgotten-realms.js"></script>
+    <script src="settings/greyhawk.js"></script>
+    <script src="settings/dark-sun.js"></script>
+    <script src="settings/dragonlance.js"></script>
+    <script src="character-generator-engine.js"></script>
+    <script src="character-generator-export.js"></script>
     <script src="character-generator.js"></script>
   </body>
 </html>
