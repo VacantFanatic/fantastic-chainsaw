@@ -18,9 +18,12 @@ page, with no framework, no build step, and no algorithm.
 │   │   ├── starfield.html            # interactive piece: "a slow drift"
 │   │   └── starfield.js
 │   └── character-generator/
-│       ├── character-generator.html  # interactive piece: "cg–20"
-│       ├── character-generator.css   # page-local palette + panel/sheet layout
-│       └── character-generator.js    # SRD 5.2.1 data + seeded generator
+│       ├── character-generator.html         # interactive piece: "cg–20"
+│       ├── character-generator.css          # page-local palette + panel/sheet layout
+│       ├── character-generator-data.js      # SRD 5.2.1 tables + settings/cartridges
+│       ├── character-generator-engine.js    # seeded randomness + buildCharacter()
+│       ├── character-generator-export.js    # plain text / PDF / JSON export
+│       └── character-generator.js           # rendering, state, serial, UI wiring
 ├── .prettierrc.json    # formatting rules
 └── README.md
 ```

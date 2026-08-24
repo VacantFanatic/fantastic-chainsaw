@@ -39,6 +39,14 @@ These are the point of the project, not temporary limitations:
 If something seems to need a build step, the answer is almost always to
 want less, not to add a toolchain.
 
+A piece can still split its script across multiple files for
+navigability (see `pages/character-generator/`) as long as they're
+loaded as plain `<script src>` tags, in dependency order, with no
+`type="module"` — module scripts refuse to load over `file://`, which
+would break "open `index.html` directly." Classic scripts share one
+global scope across tags (`const`/`let` included, not just functions),
+so this is organization, not architecture.
+
 ## Low-fi is a style, not an excuse
 
 The aesthetic is deliberately rough. The _implementation_ is not. Two
