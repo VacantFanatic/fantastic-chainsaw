@@ -21,6 +21,12 @@ page, with no framework, no build step, and no algorithm.
 │       ├── character-generator.html         # interactive piece: "cg–20"
 │       ├── character-generator.css          # page-local palette + panel/sheet layout
 │       ├── character-generator-data.js      # SRD 5.2.1 tables + settings/cartridges
+│       ├── settings/                        # one file per setting, self-registering
+│       │   ├── generic.js                   # (see the comment in character-generator-data.js)
+│       │   ├── forgotten-realms.js
+│       │   ├── greyhawk.js
+│       │   ├── dark-sun.js
+│       │   └── dragonlance.js
 │       ├── character-generator-engine.js    # seeded randomness + buildCharacter()
 │       ├── character-generator-export.js    # plain text / PDF / JSON export
 │       └── character-generator.js           # rendering, state, serial, UI wiring

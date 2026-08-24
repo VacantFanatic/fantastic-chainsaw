@@ -88,7 +88,7 @@ function syncLamps() {
   // Generic is the absence of a setting rather than one of them, so its
   // lamp reads as off -- the same rule the serial follows.
   const setting = settingFor(state.setting);
-  setLamp("setting", setting.id !== SETTINGS[0].id);
+  setLamp("setting", setting.id !== DEFAULT_SETTING_ID);
   setText("lamp-setting", setting.label);
 
   setText("lamp-cartridge", cartridgeFor(state.cartridge).label);
@@ -353,7 +353,7 @@ function serialOf(current) {
   // Generic adds no group. That keeps every serial minted before settings
   // existed byte-identical, so old links are not quietly invalidated.
   const setting = settingFor(current.setting);
-  if (setting.id !== SETTINGS[0].id) groups.push(setting.code);
+  if (setting.id !== DEFAULT_SETTING_ID) groups.push(setting.code);
 
   // Same rule for the name pin: it is only written when the name really
   // has outlived its species, so nothing that was rolled without one
@@ -449,7 +449,7 @@ function parseSerial(text) {
     return null;
   }
 
-  let setting = SETTINGS[0].id;
+  let setting = DEFAULT_SETTING_ID;
   if (groups.length === withMethod + 1) {
     const code = groups.pop();
     const match = SETTINGS.find((entry) => entry.code === code);

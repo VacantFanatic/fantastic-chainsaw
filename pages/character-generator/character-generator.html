@@ -1377,6 +1377,16 @@
     </footer>
 
     <script src="character-generator-data.js"></script>
+    <!-- One <script> per setting, registering into SETTINGS (see the
+         comment above that array in character-generator-data.js). Order
+         doesn't affect correctness -- DEFAULT_SETTING_ID marks the
+         fallback, not array position -- but generic reads first here as
+         the base case. -->
+    <script src="settings/generic.js"></script>
+    <script src="settings/forgotten-realms.js"></script>
+    <script src="settings/greyhawk.js"></script>
+    <script src="settings/dark-sun.js"></script>
+    <script src="settings/dragonlance.js"></script>
     <script src="character-generator-engine.js"></script>
     <script src="character-generator-export.js"></script>
     <script src="character-generator.js"></script>
