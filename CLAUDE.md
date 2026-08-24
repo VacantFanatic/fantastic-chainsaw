@@ -20,7 +20,7 @@ Concretely that means:
   be either or both.
 - **Every page is allowed to be its own thing.** Shared tokens exist so
   the site feels like one place, but a piece is free to override them
-  entirely (see `pages/starfield.html`). Consistency serves the work; it
+  entirely (see `pages/starfield/starfield.html`). Consistency serves the work; it
   doesn't outrank it.
 - **Visible seams are fine.** Monospace labels, `index of /`, dashed
   rules, "broadcasting since 2026", CRT phosphor mode. The construction
@@ -62,7 +62,8 @@ are `aria-hidden`, and anything that isn't a real destination isn't an
 index.html          home page — the hand-ordered index of everything
 css/style.css       shared tokens + layout (paper/ink default, phosphor mode)
 js/main.js          home page behavior (static strip, phosphor toggle)
-pages/              one file (or pair) per piece; interactive or prose
+pages/              one subfolder per piece (html/css/js together); a
+                    single-file piece can skip the subfolder
 NOTES.md            running review notes: known issues, open items
 .prettierrc.json    formatting; the whole tree complies
 .gitattributes      forces LF checkouts so prettier agrees with CI

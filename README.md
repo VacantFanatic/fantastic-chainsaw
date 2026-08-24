@@ -7,27 +7,30 @@ page, with no framework, no build step, and no algorithm.
 ## Structure
 
 ```
-site/
+.
 ├── index.html          # home page — the "directory listing" of everything else
 ├── css/
 │   └── style.css       # shared design tokens + layout (paper/ink + phosphor mode)
 ├── js/
 │   └── main.js         # home page behavior (static-strip effect, phosphor toggle)
 ├── pages/
-│   ├── starfield.html  # interactive piece: "a slow drift"
-│   ├── starfield.js
-│   ├── character-generator.html   # interactive piece: "cg–20"
-│   ├── character-generator.css    # page-local palette + panel/sheet layout
-│   └── character-generator.js     # SRD 5.2.1 data + seeded generator
+│   ├── starfield/
+│   │   ├── starfield.html            # interactive piece: "a slow drift"
+│   │   └── starfield.js
+│   └── character-generator/
+│       ├── character-generator.html  # interactive piece: "cg–20"
+│       ├── character-generator.css   # page-local palette + panel/sheet layout
+│       └── character-generator.js    # SRD 5.2.1 data + seeded generator
 ├── .prettierrc.json    # formatting rules
 └── README.md
 ```
 
 ## Adding a new page
 
-1. Create `pages/your-page.html` (copy `starfield.html` as a starting
-   point if it's interactive, or just write plain HTML for a blog post).
-2. Link to `../css/style.css` for the shared look, or write scoped
+1. Create `pages/your-page/your-page.html` (copy `starfield/` as a
+   starting point if it's interactive, or just write plain HTML for a
+   blog post). A page with only one file can skip the subfolder.
+2. Link to `../../css/style.css` for the shared look, or write scoped
    `<style>` for anything page-specific. A piece big enough to need it
    can bring its own stylesheet next to it (see `character-generator.css`).
 3. Add an `<li class="entry">` to the list in `index.html` pointing at
@@ -55,7 +58,7 @@ Pick one (both are free for a static site like this):
 - **GitHub Pages** — push this folder to a GitHub repo, then enable
   Pages in the repo settings (Settings → Pages → deploy from branch).
 - **Netlify** — connect the repo at netlify.com, or drag-and-drop the
-  `site/` folder onto their dashboard for an instant deploy.
+  repo folder onto their dashboard for an instant deploy.
 
 ## Domain
 
