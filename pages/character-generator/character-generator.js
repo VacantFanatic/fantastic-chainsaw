@@ -2127,6 +2127,10 @@ function buildAttacks(cls, mods, spellcasting, proficiency) {
   return attacks;
 }
 
+// The SRD offers a flat GP sum in place of a class's starting equipment
+// package; this generator always takes it (see NOTES.md).
+const BACKGROUND_GOLD = 50;
+
 function buildEquipment(cls, background) {
   const items = [];
   if (cls.kit.armor) items.push(cls.kit.armor);
@@ -2143,7 +2147,12 @@ function buildEquipment(cls, background) {
   });
 
   cls.kit.gear.forEach((item) => items.push(item));
-  items.push(background.name + " background: 50 GP in place of the kit");
+  items.push(
+    background.name +
+      " background: " +
+      BACKGROUND_GOLD +
+      " GP in place of the kit",
+  );
   return items;
 }
 
@@ -2361,7 +2370,7 @@ function buildCharacter(state) {
     spellcasting: spellcasting,
     attacks: buildAttacks(cls, mods, spellcasting, proficiency),
     equipment: buildEquipment(cls, background),
-    gold: cls.kit.gp + 50,
+    gold: cls.kit.gp + BACKGROUND_GOLD,
     heroicInspiration: species.id === "human",
   };
 }
@@ -2386,6 +2395,10 @@ function byId(id) {
 function setText(id, value) {
   const node = byId(id);
   if (node) node.textContent = value;
+}
+
+function status(message) {
+  setText("lcd-status", message);
 }
 
 function fillList(id, items) {
@@ -2455,11 +2468,21 @@ function syncPorts() {
   syncDials();
 }
 
+// The bar meter's scale: an ability score of ABILITY_BAR_MIN sits at the
+// empty end, ABILITY_BAR_MIN + ABILITY_BAR_RANGE at the full end. The
+// shuffle animation's noise (in commit()) draws from the same range so the
+// bars read as plausible scores while they're still searching.
+const ABILITY_BAR_MIN = 6;
+const ABILITY_BAR_RANGE = 14;
+
 function setBars(values) {
   ABILITIES.forEach((ability) => {
     const bar = document.querySelector('[data-bar="' + ability + '"]');
     if (!bar) return;
-    const level = Math.max(0, Math.min(1, (values[ability] - 6) / 14));
+    const level = Math.max(
+      0,
+      Math.min(1, (values[ability] - ABILITY_BAR_MIN) / ABILITY_BAR_RANGE),
+    );
     bar.style.setProperty("--level", level.toFixed(3));
   });
 }
@@ -2654,22 +2677,28 @@ function render(character) {
   );
 }
 
+// "Level 3 Elf (High Elf) Wizard — Order of Scribes" — shared by the plain
+// text export and the PDF header, which print it identically.
+function buildLine(character) {
+  return (
+    "Level " +
+    character.level +
+    " " +
+    character.species.name +
+    (character.lineage ? " (" + character.lineage.name + ")" : "") +
+    " " +
+    character.cls.name +
+    " — " +
+    character.subclass
+  );
+}
+
 function asPlainText(character) {
   const lines = [];
   const rule = "----------------------------------------";
 
   lines.push(character.name);
-  lines.push(
-    "Level " +
-      character.level +
-      " " +
-      character.species.name +
-      (character.lineage ? " (" + character.lineage.name + ")" : "") +
-      " " +
-      character.cls.name +
-      " — " +
-      character.subclass,
-  );
+  lines.push(buildLine(character));
   lines.push(
     "Background: " +
       character.background.name +
@@ -2763,7 +2792,7 @@ function asPlainText(character) {
 }
 
 /* ---------------------------------------------------------
-   PDF export
+   Export -- copy as text, PDF, and JSON
 
    A PDF is a text format with an index bolted to the end, so one can be
    written out by hand -- which is the only way to offer a download here
@@ -2996,21 +3025,7 @@ function pdfHeader(doc, character, serial) {
   pdfWrite(doc, character.name, x, doc.y, { size: 20, font: PDF_FONT.bold });
 
   doc.y -= 15;
-  pdfWrite(
-    doc,
-    "Level " +
-      character.level +
-      " " +
-      character.species.name +
-      (character.lineage ? " (" + character.lineage.name + ")" : "") +
-      " " +
-      character.cls.name +
-      " — " +
-      character.subclass,
-    x,
-    doc.y,
-    { size: 10 },
-  );
+  pdfWrite(doc, buildLine(character), x, doc.y, { size: 10 });
 
   doc.y -= 12;
   pdfWrite(
@@ -3064,31 +3079,27 @@ function skillBonus(character, skill) {
   );
 }
 
-// The same sheet the page shows, as data: one list of sections, each a
-// list of rows. The layout above knows nothing about D&D, and this knows
-// nothing about points and columns.
-function sheetSections(character) {
-  const sections = [];
-  const passiveOf = function (id) {
-    return (
-      10 +
-      skillBonus(
-        character,
-        SKILLS.find((skill) => skill.id === id),
-      )
-    );
-  };
+function passiveScore(character, skillId) {
+  return (
+    10 +
+    skillBonus(
+      character,
+      SKILLS.find((skill) => skill.id === skillId),
+    )
+  );
+}
 
-  const abilities = { title: "ability scores", rows: [] };
+function abilitiesSection(character) {
+  const section = { title: "ability scores", rows: [] };
   ABILITIES.forEach((ability) => {
-    abilities.rows.push({
+    section.rows.push({
       label: ABILITY_NAMES[ability],
       value: character.scores[ability] + "  " + signed(character.mods[ability]),
       bold: true,
     });
 
     const proficientSave = character.cls.saves.indexOf(ability) !== -1;
-    abilities.rows.push({
+    section.rows.push({
       label: "saving throw",
       value: signed(
         character.mods[ability] + (proficientSave ? character.proficiency : 0),
@@ -3102,7 +3113,7 @@ function sheetSections(character) {
       const trained =
         character.skills.indexOf(skill.name) !== -1 ||
         character.expertise.indexOf(skill.name) !== -1;
-      abilities.rows.push({
+      section.rows.push({
         label: skill.name,
         value: signed(skillBonus(character, skill)),
         indent: 12,
@@ -3111,9 +3122,11 @@ function sheetSections(character) {
       });
     });
   });
-  sections.push(abilities);
+  return section;
+}
 
-  sections.push({
+function combatSection(character) {
+  return {
     title: "combat",
     rows: [
       { label: "armor class", value: character.armorClass },
@@ -3126,17 +3139,25 @@ function sheetSections(character) {
       { label: "hit dice", value: "1d" + character.cls.hitDie },
       { label: "initiative", value: signed(character.initiative) },
       { label: "proficiency bonus", value: signed(character.proficiency) },
-      { label: "passive perception", value: passiveOf("perception") },
-      { label: "passive insight", value: passiveOf("insight") },
-      { label: "passive investigation", value: passiveOf("investigation") },
+      {
+        label: "passive perception",
+        value: passiveScore(character, "perception"),
+      },
+      { label: "passive insight", value: passiveScore(character, "insight") },
+      {
+        label: "passive investigation",
+        value: passiveScore(character, "investigation"),
+      },
       {
         label: "heroic inspiration",
         value: character.heroicInspiration ? "yes" : "no",
       },
     ],
-  });
+  };
+}
 
-  sections.push({
+function attacksSection(character) {
+  return {
     title: "attacks",
     rows: character.attacks.map((attack) => ({
       label:
@@ -3147,18 +3168,22 @@ function sheetSections(character) {
         attack.damage +
         (attack.notes ? " — " + attack.notes : ""),
     })),
-  });
+  };
+}
 
-  sections.push({
+function featuresSection(character) {
+  return {
     title: "features & traits",
     rows: character.cls.features
       .concat("Subclass: " + character.subclass)
       .concat(character.traits)
       .concat(character.feats)
       .map((entry) => ({ label: entry })),
-  });
+  };
+}
 
-  sections.push({
+function trainingSection(character) {
+  return {
     title: "proficiencies & training",
     rows: [
       { label: "armor", bold: true },
@@ -3171,39 +3196,52 @@ function sheetSections(character) {
       { label: "languages", bold: true },
       { label: character.languages.join(", "), indent: 12 },
     ],
-  });
+  };
+}
 
-  sections.push({
+function equipmentSection(character) {
+  return {
     title: "equipment",
     rows: character.equipment
       .map((item) => ({ label: item }))
       .concat([{ label: "coin", value: character.gold + " GP", bold: true }]),
-  });
+  };
+}
 
-  if (character.spellcasting) {
-    const casting = character.spellcasting;
-    sections.push({
-      title: casting.label,
-      rows: [
-        {
-          label: "spellcasting ability",
-          value: ABILITY_NAMES[casting.ability],
-        },
-        { label: "spell save DC", value: casting.dc },
-        { label: "spell attack", value: casting.attack },
-        { label: "spell slots", value: casting.slotTable },
-        { label: "cantrips", bold: true },
-        {
-          label: casting.cantrips.length ? casting.cantrips.join(", ") : "none",
-          indent: 12,
-        },
-        { label: "prepared", bold: true },
-        { label: casting.prepared.join(", "), indent: 12 },
-      ],
-    });
-  }
+function spellcastingSection(character) {
+  if (!character.spellcasting) return null;
+  const casting = character.spellcasting;
+  return {
+    title: casting.label,
+    rows: [
+      { label: "spellcasting ability", value: ABILITY_NAMES[casting.ability] },
+      { label: "spell save DC", value: casting.dc },
+      { label: "spell attack", value: casting.attack },
+      { label: "spell slots", value: casting.slotTable },
+      { label: "cantrips", bold: true },
+      {
+        label: casting.cantrips.length ? casting.cantrips.join(", ") : "none",
+        indent: 12,
+      },
+      { label: "prepared", bold: true },
+      { label: casting.prepared.join(", "), indent: 12 },
+    ],
+  };
+}
 
-  return sections;
+// The same sheet the page shows, as data: one list of sections, each a
+// list of rows. The layout above knows nothing about D&D, and this knows
+// nothing about points and columns.
+function sheetSections(character) {
+  return [
+    abilitiesSection(character),
+    combatSection(character),
+    attacksSection(character),
+    featuresSection(character),
+    trainingSection(character),
+    equipmentSection(character),
+    spellcastingSection(character),
+  ].filter(Boolean);
 }
 
 /* --- file assembly ---------------------------------------------------- */
@@ -3379,13 +3417,6 @@ function asJson(character, serial) {
     };
   });
 
-  const passive = (id) =>
-    10 +
-    skillBonus(
-      character,
-      SKILLS.find((skill) => skill.id === id),
-    );
-
   return {
     serial: serial,
     generator: "cg-20",
@@ -3419,9 +3450,9 @@ function asJson(character, serial) {
       hitPoints: character.maxHp,
       initiative: character.initiative,
       heroicInspiration: character.heroicInspiration,
-      passivePerception: passive("perception"),
-      passiveInsight: passive("insight"),
-      passiveInvestigation: passive("investigation"),
+      passivePerception: passiveScore(character, "perception"),
+      passiveInsight: passiveScore(character, "insight"),
+      passiveInvestigation: passiveScore(character, "investigation"),
     },
     // Every skill, with what is true of it -- a consumer that only wants
     // the trained ones can filter, but one that wants the modifiers can
@@ -3472,6 +3503,20 @@ function exportJson() {
     exportName(character, serial, "json"),
   );
   status("sheet exported as JSON");
+}
+
+function copySheet() {
+  const text = asPlainText(buildCharacter(state));
+
+  if (!navigator.clipboard || !navigator.clipboard.writeText) {
+    status("clipboard unavailable — use print");
+    return;
+  }
+
+  navigator.clipboard.writeText(text).then(
+    () => status("sheet copied to clipboard"),
+    () => status("copy blocked by the browser"),
+  );
 }
 
 /* ---------------------------------------------------------
@@ -3649,6 +3694,13 @@ const prefersReducedMotion = window.matchMedia(
 const SCRAMBLE_GLYPHS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#*·";
 let shuffleTimer = null;
 
+// The "searching" shuffle in commit(): how long the name/build readouts
+// scramble for, and how fast.
+const SHUFFLE_NAME_LENGTH = 14;
+const SHUFFLE_BUILD_LENGTH = 22;
+const SHUFFLE_TICK_COUNT = 9;
+const SHUFFLE_TICK_MS = 55;
+
 function scramble(length) {
   let text = "";
   for (let i = 0; i < length; i += 1) {
@@ -3739,21 +3791,22 @@ function commit(animated) {
 
   let ticks = 0;
   shuffleTimer = window.setInterval(function tick() {
-    setText("lcd-name", scramble(14));
-    setText("lcd-build", scramble(22));
+    setText("lcd-name", scramble(SHUFFLE_NAME_LENGTH));
+    setText("lcd-build", scramble(SHUFFLE_BUILD_LENGTH));
     const noise = {};
     ABILITIES.forEach((ability) => {
-      noise[ability] = 6 + Math.floor(Math.random() * 14);
+      noise[ability] =
+        ABILITY_BAR_MIN + Math.floor(Math.random() * ABILITY_BAR_RANGE);
     });
     setBars(noise);
 
     ticks += 1;
-    if (ticks >= 9) {
+    if (ticks >= SHUFFLE_TICK_COUNT) {
       window.clearInterval(shuffleTimer);
       panel.classList.remove("is-busy");
       render(character);
     }
-  }, 55);
+  }, SHUFFLE_TICK_MS);
 }
 
 // Hold the name and change the species and the name has to stay put,
@@ -3872,10 +3925,6 @@ function renderParty() {
   }
 }
 
-function status(message) {
-  setText("lcd-status", message);
-}
-
 /* ---------------------------------------------------------
    MIDI -- five keys, five channels
 
@@ -3940,20 +3989,6 @@ function connectMidi() {
       midiListen(access);
     },
     () => midiReport("midi access refused"),
-  );
-}
-
-function copySheet() {
-  const text = asPlainText(buildCharacter(state));
-
-  if (!navigator.clipboard || !navigator.clipboard.writeText) {
-    status("clipboard unavailable — use print");
-    return;
-  }
-
-  navigator.clipboard.writeText(text).then(
-    () => status("sheet copied to clipboard"),
-    () => status("copy blocked by the browser"),
   );
 }
 
