@@ -32,6 +32,16 @@ SETTINGS.push({
         ["blade", "watch", "banner", "field", "moor", "vale", "oath", "light"],
       ],
     },
+    elf: {
+      given: [
+        ["Sil", "Thae", "Eryn", "Las", "Quen", "Faer", "Ith", "Aelu"],
+        ["wen", "driel", "ianthe", "or", "wyn", "iel", "essa", "une"],
+      ],
+      family: [
+        ["Star", "Leaf", "Moon", "Dawn", "Wind", "Silver", "Dew", "Sky"],
+        ["shade", "song", "glade", "whisper", "fall", "reach", "bloom", "rest"],
+      ],
+    },
     gnome: {
       given: [
         ["Cog", "Bell", "Pyr", "Nim", "Tock", "Ves", "Wim", "Zan"],
@@ -62,6 +72,8 @@ SETTINGS.push({
     "of the Long Barrows",
     "the Twice-Promised",
     "the Unheralded",
+    "the Star-Counted",
+    "who Kept the Vow",
   ],
   regions: [
     "the Vale of Lamps",
@@ -72,11 +84,15 @@ SETTINGS.push({
     "the Redwatch",
     "Ninewells",
     "the Long Barrows",
+    "the Farwatch",
+    "Moonmere",
   ],
   subclasses: {
     bard: "College of the Long Road",
     cleric: "Restored Faith Domain",
     paladin: "Oath of the Broken Lance",
+    rogue: "the Lantern Company",
+    sorcerer: "the Moonborn Line",
     wizard: "Order of the Crimson Moon",
   },
 });

@@ -690,3 +690,42 @@ rule `#231f20`, signal red `#b22e20`, oxblood `#3e1815`. Body face is
 Space Grotesk standing in for their proprietary te-20; the blackletter
 accent stays UnifrakturMaguntia, which is doing the job their "swingus"
 does on the medieval unit.
+
+- **2026-08-24: declined to use real 2nd-edition proper nouns, on
+  purpose.** Asked to reuse actual race/class/location names from the
+  2e Greyhawk, Dark Sun, and Dragonlance sourcebooks and to drop the
+  "not affiliated with Wizards of the Coast" line. Declined both: those
+  three settings are not dormant IP -- WotC/Hasbro actively republish
+  and sell them (Dragonlance got a full 5e hardcover in 2022), so
+  copyright age isn't the question age alone doesn't answer, and
+  continuous commercial use cuts against any abandonment reading
+  anyway. The disclaimer is what keeps this an homage rather than a
+  reproduction; pulling it while adding real proper nouns would remove
+  the one thing doing that work. The SRD attribution line is a separate
+  matter and stays regardless -- CC BY 4.0 requires it for the
+  mechanical content actually in use.
+  Did the flavor pass a different way instead: sharpened the already-
+  invented regions, epithets, and subclass names for Greyhawk, Dark
+  Sun, and Dragonlance (more of them, tighter to each setting's
+  register), and added a dwarf name bank to Greyhawk and an elf one to
+  Dragonlance for the same reason the human ones exist -- so the
+  setting has its own voice, not just its human population.
+  Also asked to add the Thri-Kreen to Dark Sun -- same problem, it's a
+  WotC-coined creature name that's appeared as a playable race in
+  current 5e books, not a generic fantasy word. Followed the project's
+  own precedent instead (`half-dwarf` and `roadkin` are both original
+  species invented to fill a narrative slot rather than borrowed and
+  renamed) and invented the **Carapan**: chitin-hided, desert-adapted,
+  heals extra on a Long Rest, communicates by clicking rather than
+  telepathy -- deliberately not the leaping/four-armed/telepathic
+  cluster of traits that would read as "thri-kreen with the serial
+  numbers filed off." `settings: ["dark-sun"]`, appended to the end of
+  `SPECIES` per the append-only rule (the name pin is a raw array
+  index), with its own `NAME_BANKS` entry alongside `half-dwarf` and
+  `roadkin`.
+  Verified with a 2400-build sweep across all three settings (buildCharacter,
+  asPlainText, sheetSections, asJson, no page errors) rather than the usual
+  before/after fingerprint diff, since the content was deliberately meant to
+  change this time. Confirmed each setting's species/class exclusions still
+  hold, every new subclass name surfaces, and Carapan appears at roughly the
+  expected 1-in-7 rate for Dark Sun's roster.

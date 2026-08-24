@@ -23,6 +23,16 @@ SETTINGS.push({
         ["ward", "field", "stone", "rush", "gate", "barrow", "mill", "hollow"],
       ],
     },
+    dwarf: {
+      given: [
+        ["Borg", "Dunn", "Harm", "Kel", "Orn", "Thrag", "Wulf", "Yorn"],
+        ["in", "und", "ar", "og", "elm", "urn", "ik", "orn"],
+      ],
+      family: [
+        ["Stone", "Hammer", "Iron", "Deep", "Grim", "Old", "Cold", "Rock"],
+        ["fist", "delve", "hold", "beard", "vault", "forge", "shaft", "ward"],
+      ],
+    },
   },
   epithets: [
     "the Elder",
@@ -33,6 +43,8 @@ SETTINGS.push({
     "of the Ninefold Hills",
     "the Weatherbeaten",
     "the Landless",
+    "the Wold-Born",
+    "of the Fallen Writ",
   ],
   regions: [
     "the Kettlemarch",
@@ -43,11 +55,15 @@ SETTINGS.push({
     "Blackrush",
     "the Old Duchy",
     "Hollowbrake",
+    "the Ironmarch",
+    "Wolfmere",
   ],
   subclasses: {
+    barbarian: "Reavers of the Wold",
     cleric: "Old Faith Domain",
     fighter: "Company of the Standing Shield",
     ranger: "Marchwarden",
+    rogue: "the Free Company",
     wizard: "the Grey Circle",
   },
 });

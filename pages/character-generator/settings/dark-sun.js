@@ -12,7 +12,8 @@ SETTINGS.push({
   note: "no gods, no water, and no going back.",
   // A thinner bestiary and an emptier sky: the gods are gone, which is
   // what takes the cleric and the paladin with them. The goliath stays
-  // as the big folk, and the half-dwarf is native here and nowhere else.
+  // as the big folk; the half-dwarf and the carapan (see SPECIES in
+  // character-generator-data.js) are native here and nowhere else.
   species: (list) =>
     list.filter(
       (entry) =>
@@ -63,6 +64,8 @@ SETTINGS.push({
     "of Ninth Well",
     "the Still Breathing",
     "the Sold Twice",
+    "the Bone-Cutter",
+    "who Crossed the Glass",
   ],
   regions: [
     "the Glass Flats",
@@ -73,11 +76,15 @@ SETTINGS.push({
     "Kiln",
     "the Scour",
     "Last Shade",
+    "the Hollow Cistern",
+    "Emberreach",
   ],
   subclasses: {
+    barbarian: "the Sand-Born Fury",
     druid: "Circle of the Last Water",
     fighter: "Arena Champion",
     ranger: "Flats-Walker",
+    sorcerer: "the Cinder Bloodline",
     wizard: "the Ashen Art",
   },
 });

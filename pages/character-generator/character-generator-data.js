@@ -283,6 +283,19 @@ const SPECIES = [
     keenSenses: ["Investigation", "Perception", "Sleight of Hand"],
     keenSenseLabel: "Curious Hands",
   },
+  {
+    id: "carapan",
+    name: "Carapan",
+    settings: ["dark-sun"],
+    size: ["Medium"],
+    speed: 30,
+    traits: [
+      "Chitin Hide — +1 to AC when not wearing armor",
+      "Desert-Born — advantage on saving throws against exhaustion from heat or thirst",
+      "Molt-Healing — regain one extra Hit Die when you finish a Long Rest",
+      "Clicking Speech — communicate simple tactical signals to other Carapan within 30 ft. without sound",
+    ],
+  },
 ];
 
 const CLASSES = [
@@ -1275,6 +1288,25 @@ const NAME_BANKS = {
         "road",
         "latch",
         "spoon",
+      ],
+    ],
+  },
+  carapan: {
+    given: [
+      ["Kess", "Tchak", "Vrin", "Xeth", "Chir", "Skarn", "Ithka", "Zurr"],
+      ["ith", "ka", "ex", "iss", "un", "ok", "eth", "ix"],
+    ],
+    family: [
+      ["Sand", "Husk", "Brood", "Shell", "Dune", "Thorn", "Grit", "Chitin"],
+      [
+        "clatter",
+        "shard",
+        "weave",
+        "moult",
+        "drift",
+        "carve",
+        "hollow",
+        "wing",
       ],
     ],
   },
