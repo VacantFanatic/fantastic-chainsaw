@@ -33,6 +33,50 @@ SETTINGS.push({
         ["fist", "delve", "hold", "beard", "vault", "forge", "shaft", "ward"],
       ],
     },
+    // The book's elf names are lush and springlike -- moonlight, willow,
+    // rain. Wrong season for "older and colder, a longer memory"; these
+    // read autumnal and faded instead, old houses rather than young groves.
+    elf: {
+      given: [
+        ["Ael", "Cor", "Fenn", "Ith", "Nal", "Ser", "Thal", "Wyn"],
+        ["wyn", "ric", "eth", "mir", "wen", "dor", "ael", "orn"],
+      ],
+      family: [
+        ["Autumn", "Grey", "Old", "Faded", "Long", "Elder", "Frost", "Amber"],
+        ["grove", "hollow", "vale", "wood", "reach", "spire", "watch", "fall"],
+      ],
+    },
+    // The book's gnome names are clockwork-tinker (Cog, Fidget, Sprock,
+    // wrench, gear) -- more artificer-flavored than this world calls for.
+    // These read rustic and old-hedgerow instead.
+    gnome: {
+      given: [
+        ["Bod", "Fenny", "Hob", "Nib", "Pock", "Quig", "Tam", "Wik"],
+        ["kin", "ory", "ett", "us", "adin", "el", "ick", "om"],
+      ],
+      family: [
+        [
+          "Hedge",
+          "Hollow",
+          "Bramble",
+          "Mossy",
+          "Thistle",
+          "Warren",
+          "Elder",
+          "Nook",
+        ],
+        [
+          "burrow",
+          "patch",
+          "root",
+          "cobble",
+          "hearth",
+          "bell",
+          "wick",
+          "furrow",
+        ],
+      ],
+    },
   },
   epithets: [
     "the Elder",
