@@ -54,6 +54,71 @@ SETTINGS.push({
         ["keeper", "tender", "oath", "delve", "warden", "brand", "hold", "vow"],
       ],
     },
+    // The book's halfling names are shire-cozy -- apple orchards, kettles,
+    // brooks. Wrong register entirely for a scarcity world; these read as
+    // small, fast, and feral instead.
+    halfling: {
+      given: [
+        ["Skrit", "Nabb", "Yiv", "Korr", "Fen", "Rask", "Tull", "Vex"],
+        ["ik", "una", "osh", "et", "arr", "iv", "ka", "un"],
+      ],
+      family: [
+        [
+          "Bone",
+          "Snare",
+          "Quick",
+          "Bramble",
+          "Blood",
+          "Thicket",
+          "Sharp",
+          "Night",
+        ],
+        ["tooth", "snare", "foot", "claw", "bite", "stalker", "hollow", "fang"],
+      ],
+    },
+    // Same problem as halfling, different flavor of wrong -- the book's elf
+    // names are forest-and-moonlight. These are wind, dust, and distance:
+    // a desert nomad's names, not a wood elf's.
+    elf: {
+      given: [
+        ["Sha", "Kest", "Ilar", "Vash", "Tare", "Quil", "Zeph", "Orin"],
+        ["ara", "esh", "ir", "une", "ash", "eth", "iel", "or"],
+      ],
+      family: [
+        ["Wind", "Dust", "Far", "Swift", "Sun", "Dry", "Long", "Wander"],
+        [
+          "strider",
+          "runner",
+          "reach",
+          "chaser",
+          "step",
+          "trail",
+          "gaze",
+          "wake",
+        ],
+      ],
+    },
+    // The book's goliath names lean cold mountain (Cloud, Frost, Peak) --
+    // there is no cold mountain here. Same folk, sun-scorched instead.
+    goliath: {
+      given: [
+        ["Dro", "Kesh", "Vorn", "Skarn", "Grii", "Sorn", "Bahk", "Ithor"],
+        ["thak", "una", "orr", "esh", "ada", "ok", "eth", "ura"],
+      ],
+      family: [
+        ["Sun", "Stone", "Iron", "Scorch", "High", "Bare", "Bright", "Hard"],
+        [
+          "shoulder",
+          "back",
+          "bearer",
+          "strider",
+          "wall",
+          "hand",
+          "brow",
+          "stand",
+        ],
+      ],
+    },
   },
   epithets: [
     "the Sun-Struck",

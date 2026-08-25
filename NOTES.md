@@ -729,3 +729,28 @@ does on the medieval unit.
   change this time. Confirmed each setting's species/class exclusions still
   hold, every new subclass name surfaces, and Carapan appears at roughly the
   expected 1-in-7 rate for Dark Sun's roster.
+- **2026-08-24, later the same day: the per-species name banks didn't
+  travel with their setting.** Every non-human species left on a
+  setting still fell back to the one generic name bank regardless of
+  where it was rolled -- Dark Sun halflings came out shire-cozy (Pip,
+  Merri, Rosa, kettles and orchards), Dark Sun elves came out lush
+  forest, Dark Sun goliaths came out cold mountain, Greyhawk elves came
+  out springtime, Greyhawk gnomes came out clockwork-tinker. Added five
+  setting-specific banks to fix the ones that actually clashed: Dark
+  Sun halfling (feral, small, fast -- teeth and thicket, not orchards),
+  Dark Sun elf (wind and distance -- a desert nomad, not a wood elf),
+  Dark Sun goliath (sun-scorched -- swapped Cloud/Frost/Peak for
+  Sun/Stone/Scorch, there's no cold mountain on Athas), Greyhawk elf
+  (autumnal and faded, fitting "a longer memory" instead of a young
+  spring grove), Greyhawk gnome (rustic hedgerow instead of artificer
+  clockwork). Left Forgotten Realms and the rest of Dragonlance's
+  fallbacks alone -- Forgotten Realms' whole premise is "refuses
+  nothing," so the default bank reading as the multiverse's baseline is
+  correct there rather than a gap, and Dragonlance's remaining fallback
+  (dwarf, on the generic forge/mining bank) doesn't clash with anything.
+  Same rule as the Carapan and the earlier flavor pass: invented,
+  setting-appropriate in register, no real 2nd-edition proper nouns.
+  Verified with a 2000-sample sweep targeted at the five changed
+  race/setting pairs -- zero build errors, and the actual generated
+  names read distinctly on inspection (Dark Sun halfling: Thickettooth,
+  Snarefang, Sharpbite; Greyhawk elf: Greyfall, Autumnspire, Frostvale).
