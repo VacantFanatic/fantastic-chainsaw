@@ -162,12 +162,15 @@ default` hides this from mouse users, but they're still in the tab order
 
 ## Correctness / behavior
 
-- **Resizing reshuffles the entire starfield** (`pages/starfield.js:90`).
-  The resize handler calls `initStars()`, which regenerates all 160 stars at
-  new random positions. Dragging a window edge re-randomizes the field
-  continuously, and on mobile the address bar showing/hiding fires `resize`
-  and wipes the field. Better: keep the stars and rescale their `baseX`/
-  `baseY` proportionally. Debouncing would help either way.
+- ~~**Resizing reshuffles the entire starfield** (`pages/starfield.js:90`).~~
+  **FIXED.** The resize handler used to call `initStars()`, which
+  regenerated all 160 stars at new random positions on every resize event —
+  dragging a window edge re-randomized the field continuously, and on
+  mobile the address bar showing/hiding fired `resize` and wiped the field.
+  It now rescales existing stars' `baseX`/`baseY` proportionally to the new
+  dimensions instead of discarding them, and is throttled to one update per
+  animation frame via `requestAnimationFrame` rather than firing on every
+  intermediate resize event.
 - ~~**`step()` is called twice under reduced motion.**~~ **FIXED.** The
   draw loop was restructured when the distortion sliders were added:
   `frame()` now only paints, and `loop()` is what schedules itself, so
@@ -179,24 +182,36 @@ default` hides this from mouse users, but they're still in the tab order
   reproduce this one, so treat it as worth verifying rather than confirmed —
   the symptom would be the field staying pulled toward the last known cursor
   position after the pointer exits.
-- **`setInterval(draw, 120)` is never cleared** (`js/main.js:51`) and
-  allocates a fresh ImageData eight times a second for the page's lifetime.
-  Harmless on a page with no teardown, but reusing one buffer and driving it
-  off `requestAnimationFrame` would be cheaper and would pause in background
-  tabs.
+- ~~**`setInterval(draw, 120)` is never cleared** (`js/main.js:51`) and
+  allocates a fresh ImageData eight times a second for the page's
+  lifetime.~~ **FIXED.** The draw loop now runs off `requestAnimationFrame`,
+  gated to the same ~120ms cadence, reuses one `ImageData` buffer instead of
+  allocating a new one every tick, and stops entirely on `visibilitychange`
+  while the tab is hidden rather than burning cycles in the background.
+- ~~**Knob dragging reads layout on every `pointermove`**
+  (`character-generator.js`, `pointerAngle`).~~ **FIXED.** Both knob-drag
+  handlers (`wireKnob` and `wireDials`) called `knob.getBoundingClientRect()`
+  on every pointer move during a drag — a forced synchronous layout read per
+  event. The knob doesn't move or resize mid-drag, so the rect is now
+  measured once on `pointerdown` and reused for the rest of that drag.
 
 ## Polish
 
 - ~~**`100vh` on mobile.**~~ **FIXED** — `pages/starfield.html` now sets
   `100dvh` with a `100vh` fallback. This became load-bearing once the
   distortion panel was anchored to the bottom of that page.
-- **Font preconnect is incomplete on `index.html`.** It preconnects to
-  `fonts.googleapis.com` but not `fonts.gstatic.com` (crossorigin), which is
-  where the font files actually come from — so the connection that matters
-  isn't warmed. `starfield.html` **is now fixed** (it had no preconnect at
-  all); `index.html` still needs the same two lines.
-- **No `<meta name="description">`, no Open Graph tags, no favicon** on
-  either page. Browsers will request `/favicon.ico` and 404.
+- ~~**Font preconnect is incomplete on `index.html`.**~~ **FIXED.** It only
+  preconnected to `fonts.googleapis.com`, not `fonts.gstatic.com`
+  (crossorigin) — the origin the font files actually download from, so the
+  connection that mattered wasn't warmed. `index.html` and
+  `character-generator.html` both now carry the second preconnect line;
+  `starfield.html` already had it.
+- ~~**No favicon on any page.**~~ **FIXED.** All three pages (`index.html`,
+  `starfield.html`, `character-generator.html`) now link a small inline-SVG
+  favicon (four phosphor-green squares on the dark background — a nod to
+  the "static" theme), so a load no longer wastes a request on a 404'ing
+  `/favicon.ico`. `<meta name="description">` and Open Graph tags are still
+  open.
 - **README structure drift.** The tree is rooted at `site/` and the deploy
   section says to drag "the `site/` folder", but everything lives at the
   repo root. Worth correcting before it confuses a future deploy.

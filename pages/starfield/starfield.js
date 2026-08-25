@@ -153,11 +153,32 @@ function initControls() {
   }
 }
 
+// Rescales the existing field to the new dimensions instead of discarding
+// it, so dragging a window edge (or a mobile browser's chrome showing and
+// hiding) doesn't continuously re-randomize every star. Throttled to once
+// per frame so a drag doesn't fire this on every intermediate size.
+let resizeQueued = false;
 window.addEventListener("resize", () => {
-  resize();
-  stars = [];
-  setCount(params.count);
-  repaintIfStill();
+  if (resizeQueued) return;
+  resizeQueued = true;
+  requestAnimationFrame(() => {
+    resizeQueued = false;
+    const oldWidth = width;
+    const oldHeight = height;
+    resize();
+
+    if (oldWidth > 0 && oldHeight > 0) {
+      const scaleX = width / oldWidth;
+      const scaleY = height / oldHeight;
+      for (const star of stars) {
+        star.baseX *= scaleX;
+        star.baseY *= scaleY;
+      }
+    }
+
+    setCount(params.count);
+    repaintIfStill();
+  });
 });
 
 window.addEventListener("pointermove", (event) => {
