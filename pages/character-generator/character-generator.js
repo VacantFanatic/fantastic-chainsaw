@@ -877,10 +877,11 @@ function setKnobIndex(group, index) {
   radio.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
-// Pointer angle measured from the knob's centre: 0 at the top, positive
-// clockwise, which is the same convention as the CSS rotation.
-function pointerAngle(knob, event) {
-  const box = knob.getBoundingClientRect();
+// Pointer angle measured from a knob's centre: 0 at the top, positive
+// clockwise, which is the same convention as the CSS rotation. Takes the
+// knob's rect rather than the knob itself so a drag can measure it once
+// on pointerdown instead of forcing a layout read on every pointermove.
+function pointerAngle(box, event) {
   const dx = event.clientX - (box.left + box.width / 2);
   const dy = event.clientY - (box.top + box.height / 2);
   return (Math.atan2(dx, -dy) * 180) / Math.PI;
@@ -907,6 +908,7 @@ function wireKnob(group) {
 
   let dragging = false;
   let moved = false;
+  let dragRect = null;
 
   // Capture keeps a drag alive if the pointer leaves the knob. It can throw
   // when there is no live pointer for the id -- a stale or synthetic event --
@@ -925,6 +927,9 @@ function wireKnob(group) {
   knob.addEventListener("pointerdown", (event) => {
     dragging = true;
     moved = false;
+    // Measured once per drag rather than on every pointermove -- the knob
+    // doesn't move or resize mid-drag, so there's nothing to re-measure.
+    dragRect = knob.getBoundingClientRect();
     capture(event, true);
     event.preventDefault();
   });
@@ -932,7 +937,7 @@ function wireKnob(group) {
   knob.addEventListener("pointermove", (event) => {
     if (!dragging) return;
     const count = knobRadios(group).length;
-    const angle = pointerAngle(knob, event);
+    const angle = pointerAngle(dragRect, event);
     // Ignore the first few degrees so a plain click doesn't register as a
     // drag and snap somewhere the user didn't intend.
     if (!moved) {
@@ -1128,11 +1133,15 @@ function wireDials() {
     let dragging = false;
     let moved = false;
     let last = 0;
+    let dragRect = null;
 
     knob.addEventListener("pointerdown", (event) => {
       dragging = true;
       moved = false;
-      last = pointerAngle(knob, event);
+      // Measured once per drag rather than on every pointermove -- the knob
+      // doesn't move or resize mid-drag, so there's nothing to re-measure.
+      dragRect = knob.getBoundingClientRect();
+      last = pointerAngle(dragRect, event);
       try {
         knob.setPointerCapture(event.pointerId);
       } catch (error) {
@@ -1142,7 +1151,7 @@ function wireDials() {
 
     knob.addEventListener("pointermove", (event) => {
       if (!dragging) return;
-      const angle = pointerAngle(knob, event);
+      const angle = pointerAngle(dragRect, event);
       let delta = angle - last;
       // Crossing the top wraps from +180 to -180; unwrap it so a slow
       // turn past twelve o'clock does not fly back the other way.

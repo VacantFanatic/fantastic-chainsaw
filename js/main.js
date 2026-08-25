@@ -18,6 +18,9 @@ function initStaticStrip() {
 
   let width = 0;
   let height = 0;
+  // Reused across every frame instead of allocated fresh each draw —
+  // only its .data gets rewritten.
+  let imageData = null;
 
   function resize() {
     const dpr = window.devicePixelRatio || 1;
@@ -33,10 +36,11 @@ function initStaticStrip() {
     // reapplied here rather than set once at startup.
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.imageSmoothingEnabled = false;
+
+    imageData = bufferCtx.createImageData(width, height);
   }
 
   function draw() {
-    const imageData = bufferCtx.createImageData(width, height);
     const data = imageData.data;
     const isPhosphor = document.body.classList.contains("phosphor");
     const tint = isPhosphor ? [99, 224, 138] : [33, 40, 59];
@@ -61,9 +65,39 @@ function initStaticStrip() {
   resize();
   draw();
 
-  if (!prefersReducedMotion) {
-    setInterval(draw, 120);
+  // Driven off requestAnimationFrame rather than setInterval so it stops
+  // burning cycles the instant the tab is backgrounded, gated to the same
+  // ~120ms cadence the interval used rather than redrawing every frame.
+  const DRAW_INTERVAL_MS = 120;
+  let rafId = null;
+  let lastDraw = 0;
+
+  function tick(timestamp) {
+    if (timestamp - lastDraw >= DRAW_INTERVAL_MS) {
+      lastDraw = timestamp;
+      draw();
+    }
+    rafId = requestAnimationFrame(tick);
   }
+
+  function startLoop() {
+    if (rafId !== null || prefersReducedMotion) return;
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function stopLoop() {
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  }
+
+  startLoop();
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopLoop();
+    else startLoop();
+  });
 
   window.addEventListener("resize", () => {
     resize();
