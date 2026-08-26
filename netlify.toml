@@ -1,8 +1,54 @@
 [build]
   publish = "."
+  # Builds are the scarce resource here, so most commits shouldn't spend
+  # one. This decides; see netlify/should-deploy.mjs for what it skips and
+  # why. Exit 0 cancels the build, non-zero proceeds -- backwards from the
+  # obvious reading, which is Netlify's convention, not a typo.
+  ignore = "node netlify/should-deploy.mjs"
 
 [functions]
   directory = "netlify/functions"
+
+# Field notes are served from git at request time by netlify/functions/
+# notes.mjs, not from the build -- that's what lets a publish go live
+# without a deploy. `force = true` matters: without it Netlify serves the
+# copy baked into the last build, which is exactly the stale file we're
+# routing around. The `?file=` parameter is belt to the function's own
+# `config.path` braces, so it gets an unambiguous target either way.
+#
+# field-notes.css is deliberately NOT here. It's hand-owned, only ever
+# changes in a deploy, and letting the CDN serve it statically saves a
+# function invocation on every pageview.
+
+[[redirects]]
+  from = "/pages/field-notes/field-notes.html"
+  to = "/.netlify/functions/notes?file=pages/field-notes/field-notes.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/pages/field-notes/posts.json"
+  to = "/.netlify/functions/notes?file=pages/field-notes/posts.json"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/pages/field-notes/feed.xml"
+  to = "/.netlify/functions/notes?file=pages/field-notes/feed.xml"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/pages/field-notes/posts/*"
+  to = "/.netlify/functions/notes?file=pages/field-notes/posts/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/pages/field-notes/sources/*"
+  to = "/.netlify/functions/notes?file=pages/field-notes/sources/:splat"
+  status = 200
+  force = true
 
 [[headers]]
   for = "/pages/field-notes/feed.xml"

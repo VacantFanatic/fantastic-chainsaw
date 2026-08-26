@@ -834,7 +834,11 @@ Deliberate choices worth remembering:
   has no path-level access control, so a weak secret is guessable. And
   `posts.json` is read then written across two separate HTTP calls, so a
   concurrent publish could hit a GitHub `409` on a stale `sha`; harmless
-  at single-owner scale, but real.
+  at single-owner scale, but real. (The second one still stands after the
+  move to one atomic commit — see "Field notes: edit, unpublish, and one
+  commit per action" below — it just fails differently now: a
+  non-fast-forward rejection on the ref update instead of a stale-`sha`
+  conflict on a single file.)
 - **`tests/publish.test.mjs` is the project's first test file.**
   Everything else on this site is checked by hand or by CI's format/link/
   no-build-step guards; the publish function's generator logic (slug
@@ -909,3 +913,202 @@ doesn't get a card, so cards don't litter the middle of a paragraph.
   from reading the code — the byte cap in particular was confirmed to
   actually bound the read (requested 1000 bytes from a 1MB response, got
   exactly 1000 back) rather than being decorative.
+
+## Field notes: edit, unpublish, and one commit per action
+
+Added after a duplicate note went live and there was no way to take it
+down except by hand-editing four generated files and pushing. Two new
+endpoints, `/api/edit` and `/api/unpublish`, both driven from the same
+unlinked `pages/admin/admin.html`, plus a fix to something the Netlify
+build list made obvious.
+
+- **Four builds per publish, now one.** Publishing touched four files,
+  and the GitHub Contents API writes one file per commit — so one note
+  produced four commits, four pushes, and four Netlify deploys (two
+  "Completed", two "Skipped", all for the same note). Writes now go
+  through the Git Data API instead: blob contents into a tree, one
+  commit, one ref update. A few more requests, exactly one build.
+- **Which made the operations atomic for free.** The old code carried a
+  comment explaining that its commit order was chosen so a mid-sequence
+  failure would leave an orphan post page rather than a listing entry
+  pointing at a 404. That tradeoff is gone: either the whole note lands
+  or none of it does, and the same guarantee covers edit and unpublish,
+  which would otherwise each have needed their own careful ordering.
+- **Editing needed a source of truth that didn't exist.** The repo stored
+  rendered HTML and a 160-character excerpt — nothing you could load back
+  into a textarea without reverse-engineering prose out of markup, which
+  is not a thing to attempt. `publish.mjs` now saves each note's plain
+  text verbatim to `pages/field-notes/sources/<slug>.txt`.
+- **One file per note, not one shared JSON blob.** The alternative was a
+  single `sources.json`. Rejected because JSON has to escape prose: every
+  paragraph break becomes a literal backslash-n on one enormous line,
+  unreadable in the file and worse in a diff, where a one-word fix to one
+  note would show up as a single changed line containing every other
+  note's text too. YAML was ruled out earlier and harder — Node has no
+  YAML parser in core, so it would mean the npm dependency
+  `netlify/functions/` is not allowed to have. The `.txt` mirrors
+  `posts/<slug>.html`: for any slug, a page and the words it was made
+  from.
+
+- **The three notes that predate `sources/` were backfilled by hand.**
+  Reconstructed from their rendered pages, which was only safe because
+  all three are short and their bodies are plain paragraphs and bare
+  links. The admin form handles the general case instead of assuming it:
+  a note with no readable source loads an empty box _and_ an error line
+  saying anything typed there replaces the whole post, rather than
+  silently offering a blank textarea that would erase it on save.
+- **An edit is not a republish.** The slug and the original date are
+  never touched, and the manifest entry is rewritten in place rather than
+  moved — so a published URL keeps working and revising an old note
+  doesn't bump it to the top of the listing. `applyEdit` is a pure
+  function specifically so that promise is unit-tested rather than
+  asserted in a comment.
+- **`publish.mjs` became the shared module.** `edit.mjs` and
+  `unpublish.mjs` import its renderers and its GitHub plumbing rather
+  than keeping copies, so all three endpoints emit byte-identical listing
+  and feed markup and can't drift. Netlify treats each top-level file in
+  `netlify/functions/` as its own function; a relative import between two
+  of them is just a normal import that the bundler inlines.
+- **The slug is validated against the shape `slugify()` produces**
+  (`/^[a-z0-9]+(-[a-z0-9]+)*$/`) before it's interpolated into a repo
+  path, on both new endpoints. It's the site owner's own form, but a slug
+  goes straight into a file path and there's no reason to let one contain
+  a dot or a slash.
+- **Deleting a file that isn't there is asked about first.** The tree API
+  rejects a delete for a path it can't find, so `unpublish.mjs` checks
+  whether the page and source exist and skips the entries that don't —
+  which means a manifest entry whose files were already removed by hand
+  still cleans up instead of erroring forever.
+- **Rust stayed off the delete button's label.** `--rust` is 4.47:1 on
+  `--paper` and still open above; the destructive button takes it as a
+  border color only and keeps `--ink` for its text. Same split-token
+  discipline as `--phosphor-dim`/`--phosphor-line`.
+- **Verified against a fake GitHub API, not just unit tests.** All three
+  handlers were run end-to-end with `fetch` stubbed — 45 assertions
+  covering the happy paths, that each action produces _exactly one_
+  commit, that unpublishing `mt-joy-2` doesn't touch `mt-joy`, that an
+  edit preserves the date and manifest position, that a traversal-shaped
+  slug is refused, and that unpublishing the last note leaves a valid
+  empty listing and feed. The unit tests (`edit.test.mjs`,
+  `unpublish.test.mjs`) cover the pure helpers; run everything with
+  `node --test "tests/*.test.mjs"`.
+
+Open items: same as the original publish flow — none of this is verified
+against a live Netlify site + real GitHub token, because the repo still
+isn't connected. The stubbed run covers the request/response shapes the
+GitHub API documents, not GitHub's actual behavior.
+
+## Netlify: cutting the build count
+
+Build capacity, not disk or bandwidth, is the budget on this site. The
+work above took a publish from four commits to one; this is the rest of
+it, and most of the saving turned out not to be in publishing at all.
+
+- **Deploy previews were the bigger leak.** `CLAUDE.md` mandates
+  branch-per-change and PRs, and Netlify builds every push to an open PR
+  by default. A few commits on a working branch outnumber a month of
+  publishing. `netlify/should-deploy.mjs` cancels any build whose
+  `CONTEXT` isn't `production`, and the dashboard setting (Site
+  configuration → Build & deploy → Branches and deploy contexts) should be
+  turned off too — the script is the backstop, not the fix.
+- **Docs commits were deploying a byte-identical site.** `c5e604e` is the
+  clearest case: a one-file README change that ran a full production
+  deploy. The guard now skips production commits that touch only `*.md`,
+  `tests/`, `.github/`, `.claude/`, or formatter config.
+- **The ignore list is a denylist, deliberately.** Anything not explicitly
+  named as developer-facing counts as site-affecting, so a new top-level
+  directory deploys by default rather than being silently dropped. The
+  opposite arrangement fails quietly and late.
+- **Netlify reads the exit code backwards.** `0` cancels the build,
+  non-zero proceeds. Worth stating loudly because it reads like a bug on
+  every future encounter, and inverting it by accident would mean either
+  never deploying or never skipping.
+- **Fails safe in every direction.** No `CACHED_COMMIT_REF`, a cached
+  commit missing from Netlify's shallow clone, an unreadable `COMMIT_REF`,
+  git erroring for any reason — all deploy. A wasted build costs a few
+  seconds of capacity; silently not shipping a post is something you'd
+  discover days later from a reader, if at all.
+- **Tested as a subprocess, not as a pure helper.** All the risk in that
+  script is in the env-var and git handling, so its test file builds a
+  throwaway git repo in a temp dir, commits a docs-only change, a post, a
+  mixed commit, a function change and a `netlify.toml`
+  change, and runs the real script against each. Pinned to a scratch repo
+  rather than this one's history on purpose: CI checks out shallow, so a
+  test anchored to real commits would pass locally and fail there. 13
+  cases, including all four fail-safe paths.
+- **The mixed commit is the case that matters.** One served file among
+  ignored ones must still deploy. Getting that backwards is the failure
+  mode where publishing appears to work and silently stops.
+
+Still on the table, not done: batching several publishes into one deploy
+(a draft queue flushed on a schedule), and moving content out of git so
+publishing never rebuilds at all. Both are real reductions; both cost
+something this site currently values, so they're a deliberate decision
+rather than a cleanup.
+
+## Field notes: serving from git so publishing never deploys
+
+The build-count work above was optimisation. This isn't: Netlify build
+capacity ran out mid-month, which on a static site means the blog simply
+cannot publish until it resets. Trimming builds doesn't help when the
+budget is zero. The fix is for publishing not to need a build at all.
+
+- **What actually changed is who hands a file to the reader.** Not how
+  notes are made -- `publish.mjs` still commits real, final HTML to
+  `main`, byte for byte as before. Previously the CDN served that file,
+  having received it at build time, so a note wasn't live until the site
+  rebuilt. `netlify/functions/notes.mjs` now fetches the committed file
+  from GitHub per request. Live in ~30 seconds, zero builds.
+- **The static files stay, and that's the point.** They keep `git clone`
+  and open working, keep CI's link checker meaningful, and make the whole
+  thing reversible: delete the function and the five redirects and the
+  site falls back to build-time serving with no migration and no data to
+  move. Every other option considered -- Netlify Blobs, an external CMS,
+  a database -- would have made the repo stop being the source of truth.
+  This one adds a serving path on top of files that are still just files.
+- **`force = true` on the rewrites is load-bearing.** Without it Netlify
+  serves the copy baked into the last build, which is precisely the stale
+  file this exists to route around. Easy to lose in a future edit and it
+  would fail quietly: the site would look fine and just stop updating.
+- **`field-notes.css` is deliberately left on the build path.** It's
+  hand-owned, only changes when someone edits it, and leaving it static
+  saves a function invocation on every single pageview. It's therefore
+  absent from both the redirect list and the build-guard ignore list --
+  the one file in that folder that still costs a deploy to change.
+- **`resolveFile` is a security boundary, not a router.** The function
+  holds a token that can read the entire private repo. It serves a strict
+  allowlist and rebuilds the repo path out of validated pieces rather
+  than passing any request input through, so traversal, encoded
+  traversal, a wrong extension, or a slug that isn't slugify-shaped all
+  resolve to nothing. Tested by its refusals more than its successes,
+  including that a refused path never reaches GitHub at all.
+- **Conditional requests are forwarded, not answered locally.** A
+  reader's `If-None-Match` goes to GitHub, which replies 304 for an
+  unchanged file -- and a 304 doesn't count against the API rate limit.
+  The cheap path stays cheap the whole way down. Combined with a
+  30-second CDN cache, a busy day is nowhere near the 5,000/hour ceiling.
+- **The build guard had to be updated in step, and its tests inverted.**
+  `pages/field-notes/{posts,sources}/`, `posts.json`, `feed.xml` and
+  `field-notes.html` are now in the ignore list, so a publish commit
+  skips the build. Two tests that previously asserted "a published post
+  deploys" now assert the opposite; if they ever flip back, publishing is
+  billable again and the decoupling is broken.
+- **Verified against a stubbed GitHub, 27 checks.** Content types per
+  extension, cache headers, ETag pass-through, 304 handling, 404 for a
+  missing note, 502 for a network failure or a GitHub 5xx, 500 for a
+  missing token, and every refusal path. Plus 16 unit tests on the pure
+  helpers.
+
+The honest gap: **none of the Netlify routing can be tested without
+deploying.** Whether a v2 function's `config.path` beats a static file,
+and exactly which shape a rewritten request arrives in, are both things
+the docs describe and I could not exercise. `requestedPath` therefore
+takes whichever signal is actually present -- the explicit `?file=` from
+the redirect, then Netlify's original-path header, then the request URL --
+rather than betting on one. First real deploy is the test.
+
+Also worth recording: activating any of this needs one deploy, which is
+the thing there's no capacity for. `npx netlify-cli deploy --prod --dir=.`
+uploads a prebuilt directory instead of running a build in Netlify's CI,
+and there's no build step here to skip -- worth confirming against the
+plan's own metering before relying on it.
