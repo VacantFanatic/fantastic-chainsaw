@@ -769,3 +769,139 @@ does on the medieval unit.
   race/setting pairs -- zero build errors, and the actual generated
   names read distinctly on inspection (Dark Sun halfling: Thickettooth,
   Snarefang, Sharpbite; Greyhawk elf: Greyfall, Autumnspire, Frostvale).
+
+## New piece: field notes
+
+Added 2026-08-26 as entry `03` in the index: `pages/field-notes/`, plus an
+unlinked `pages/admin/admin.html` and `netlify/functions/publish.mjs`.
+Fills in the "field notes" placeholder that's been in `index.html` since
+the beginning, with a working publish flow rather than more hand-written
+HTML.
+
+The one backend on the site. A shared secret gates a Netlify serverless
+function that commits new post files straight to `main` via the GitHub
+Contents API — see the "One narrow exception" section in `CLAUDE.md` for
+why that's allowed to break the branch-per-change and Prettier-covers-
+everything rules, and nothing else.
+
+Deliberate choices worth remembering:
+
+- **Zero npm dependencies in the function**, on purpose. Only built-in
+  Node/Fetch APIs — no `package.json` anywhere in the repo, no SDK. This
+  is what keeps "no runtime dependencies" true for the backend too, not
+  just the pages a reader sees.
+- **The secret is typed on every publish**, never stored in
+  `localStorage`/`sessionStorage`. Smallest attack surface, simplest to
+  build — the tradeoff is retyping it each time, which is fine at
+  personal-site volume.
+- **Post bodies are plain text only.** Blank line = new paragraph,
+  everything else escaped and shown as literal text. No markdown, no
+  inline formatting. Chosen explicitly over a hand-rolled markdown-lite
+  formatter to keep the function's code small and match the site's plain,
+  hand-written feel. Images, comments, and drafts are all out of scope
+  for the same reason — none of them exist yet.
+- **Four sequential commits, not one atomic one**, because the GitHub
+  Contents API has no multi-file commit. Order matters: the new post page
+  commits first, then `posts.json`, then the regenerated listing, then
+  the regenerated feed last. A failure partway through therefore leaves
+  the smallest possible mess — an orphan post page nothing links to yet —
+  rather than a broken link advertised in the feed or the directory. This
+  is an accepted tradeoff, not a bug to eventually fix; a fully atomic
+  multi-file commit would need the much heavier Git Data API for a
+  single-owner site where a failed publish is just retried by hand.
+- **`posts.json`, `field-notes.html`, `feed.xml`, and every
+  `posts/<slug>.html` are generated, not hand-written**, and are
+  overwritten on every publish. `field-notes.css` is the one file in that
+  folder that's safe to edit by hand — the function never touches it.
+- **`.prettierignore` exempts the two generated HTML shapes** (the
+  listing page and every post page) from the "whole tree complies" rule.
+  Prettier's HTML printer is whitespace-sensitive in ways that are
+  fragile to hand-match inside a template string, and getting it wrong
+  would turn CI red after every single future publish — a recurring
+  nuisance, not a one-time bug. `posts.json` stays in the normal
+  prettier-checked set; `JSON.stringify(posts, null, 2)` matches
+  Prettier's default JSON formatting closely enough that it didn't need
+  the same exemption. `feed.xml` was never in Prettier's checked glob
+  (`html,css,js,json,md`) to begin with.
+- **The listing page reuses the home page's directory classes** —
+  `.directory`, `.directory__list`, `.entry`, `.entry__num`, and so on —
+  rather than inventing new ones, since a field notes index is the same
+  "index of /" device one level down. The only new class is
+  `.field-notes__empty`, and it lives in the hand-owned
+  `field-notes.css`.
+- **Two accepted, documented-not-solved risks.** The publish endpoint has
+  no rate limiting beyond the shared secret itself — Netlify's free tier
+  has no path-level access control, so a weak secret is guessable. And
+  `posts.json` is read then written across two separate HTTP calls, so a
+  concurrent publish could hit a GitHub `409` on a stale `sha`; harmless
+  at single-owner scale, but real.
+- **`netlify/functions/publish.test.mjs` is the project's first test
+  file.** Everything else on this site is checked by hand or by CI's
+  format/link/no-build-step guards; the publish function's generator
+  logic (slug collisions, escaping, RSS structure, date formatting) can't
+  be verified any other way without a live Netlify + GitHub deploy, which
+  is exactly the situation a test earns its keep. Zero dependencies —
+  `node:test` and `node:assert/strict` are both built in — so it doesn't
+  compromise the no-runtime-dependencies rule either. Run with
+  `node --test netlify/functions/publish.test.mjs`.
+
+Open items: the publish flow itself is unverified end-to-end, since that
+needs a live Netlify site connected to this repo with real env vars set
+(`PUBLISH_SECRET`, `GITHUB_TOKEN`, `GITHUB_REPOSITORY`) — see the
+"Publishing setup" section of `README.md`. Everything checkable without
+that (templates, escaping, the CI checks, the unit tests) has been.
+
+## Field notes: link preview cards
+
+Added 2026-08-26. A paragraph that's nothing but a URL now unfurls into a
+preview card (title, description, thumbnail, domain) instead of sitting
+there as plain text — the familiar Slack/Discord/Twitter "paste a link on
+its own line" convention. A URL inside a sentence is auto-linked but
+doesn't get a card, so cards don't litter the middle of a paragraph.
+
+- **Fetched and baked in at publish time, not read time.** The function
+  fetches each linked page's `og:title`/`og:description`/`og:image` (or
+  falls back to `<title>`/`<meta name="description">`) once, when the
+  post is published, and writes the result straight into the post's
+  static HTML. Nothing fetches on a visitor's behalf — no CORS proxy, no
+  client-side dependency, no per-pageview cost. Same reasoning as
+  everything else about this feature: the function does by API what a
+  human would otherwise do by hand, once, and the result is ordinary
+  static HTML forever after.
+- **Regex, not an HTML parser**, for pulling four meta tags out of a
+  `<head>`. A real parser would mean an npm dependency for the one part
+  of the site that's supposed to have none, and four tags don't need one.
+- **A failed fetch still renders a box, just a minimal one** — domain and
+  a bare link, no title/description/image — rather than silently
+  reverting to a plain paragraph. Whether a link becomes a preview or a
+  fallback, "a link on its own line is a box" holds either way.
+- **Fetched in parallel, capped at 5 per post, 6-second timeout each,
+  300KB of HTML read per fetch.** Parallel so the worst case is one
+  timeout, not the sum of five; capped so a post with many links can't
+  blow past the function's execution budget. None of this ever aborts
+  the publish itself — `fetchLinkPreview` catches its own failures and
+  returns `null`, which is exactly the fallback-box path.
+- **Basic SSRF hygiene, not a hardened defense.** Non-http(s) schemes and
+  a short list of localhost/private-IP-shaped hostnames are refused
+  before fetching. This is proportionate, not bulletproof (no DNS-level
+  check, so rebinding isn't covered) — the input source is the site
+  owner's own trusted admin form, not public traffic, so the bar is
+  "don't let a pasted link reach the function's own private network by
+  accident," not "defend against a malicious author."
+- **`--mint` almost became a hover text color and got caught.** The first
+  pass of the inline-link styling switched to `--mint` on hover, which is
+  2.59:1 on `--paper` — the same token NOTES.md already flagged as
+  border-only, for the same reason `--phosphor-dim`/`--phosphor-line`
+  are split. Fixed before it shipped: color stays on `--rust` in both
+  states, the hover affordance is a thicker underline instead. Worth
+  recording since it's exactly the mistake the split-token rule in
+  `CLAUDE.md` exists to prevent, caught by re-reading that rule rather
+  than by a contrast checker.
+- **Verified with a local HTTP server, not just fixtures.** Redirect
+  following, `res.url` reflecting the post-redirect address (for
+  resolving a relative `og:image` correctly), 404 handling, non-HTML
+  `content-type` rejection, and the byte-cap truncation were all
+  exercised against a real (local, offline) server rather than asserted
+  from reading the code — the byte cap in particular was confirmed to
+  actually bound the read (requested 1000 bytes from a 1MB response, got
+  exactly 1000 back) rather than being decorative.
