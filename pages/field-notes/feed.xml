@@ -2,10 +2,16 @@
 <rss version="2.0">
   <channel>
     <title>STATIC — field notes</title>
-    <link>/pages/field-notes/field-notes.html</link>
+    <link>https://fantastic-chainsaw.netlify.app/pages/field-notes/field-notes.html</link>
     <description>long-form notes, plain text, newest first.</description>
     <language>en</language>
-    <lastBuildDate>Wed, 26 Aug 2026 14:35:43 GMT</lastBuildDate>
-
+    <lastBuildDate>Wed, 26 Aug 2026 17:19:32 GMT</lastBuildDate>
+    <item>
+      <title>Going to See Mt. Joy!</title>
+      <link>https://fantastic-chainsaw.netlify.app/pages/field-notes/posts/going-to-see-mt-joy.html</link>
+      <guid isPermaLink="true">https://fantastic-chainsaw.netlify.app/pages/field-notes/posts/going-to-see-mt-joy.html</guid>
+      <pubDate>Wed, 26 Aug 2026 17:19:28 GMT</pubDate>
+      <description><![CDATA[https://youtu.be/cv7-qdvYht8?si=WYG-MAVt-j5vAcOx]]></description>
+    </item>
   </channel>
 </rss>
