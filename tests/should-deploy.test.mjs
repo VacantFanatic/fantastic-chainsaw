@@ -81,26 +81,24 @@ before(() => {
     ".github/workflows/ci.yml": "name: CI2\n",
     ".prettierrc.json": '{ "semi": true }\n',
   });
-  // Exactly the file set one publish touches.
-  commit("a-publish", {
-    "pages/field-notes/posts/hello.html": "<p>hi</p>",
-    "pages/field-notes/sources/hello.txt": "hi\n",
-    "pages/field-notes/posts.json": "[]\n",
-    "pages/field-notes/field-notes.html": "<ol></ol>",
-    "pages/field-notes/feed.xml": "<rss/>",
+  // Astro source is the site now. Field notes used to appear here as
+  // generated files needing an exemption; they live in Supabase, so
+  // publishing never produces a commit at all.
+  commit("app-source", {
+    "src/pages/field-notes/index.astro": "---\n---\n<p>hi</p>",
+    "src/lib/notes.js": "export const x = 1;\n",
   });
-  commit("a-function", { "netlify/functions/publish.mjs": "export {};\n" });
-  commit("netlify-config", { "netlify.toml": '[build]\n  publish = "."\n' });
-  commit("field-notes-css", {
-    "pages/field-notes/field-notes.css": ".note { color: red; }\n",
+  commit("a-function", { "src/pages/api/notes.js": "export {};\n" });
+  commit("netlify-config", {
+    "netlify.toml": '[build]\n  publish = "dist"\n',
   });
   commit("a-new-page", {
-    "pages/starfield/starfield.html": "<canvas></canvas>",
+    "public/pages/starfield/starfield.html": "<canvas></canvas>",
   });
   commit("mixed", {
-    "css/style.css": ":root { --ink: #000; }\n",
+    "public/css/style.css": ":root { --ink: #000; }\n",
     "README.md": "# readme, once more\n",
-    "pages/field-notes/feed.xml": "<rss version='2.0'/>",
+    "tests/x.test.mjs": "// again\n",
   });
 });
 
@@ -125,23 +123,19 @@ test("tests, CI and formatter config do not spend a build", () => {
   assert.equal(code, SKIP);
 });
 
-// The whole reason this project can publish while out of build credits:
-// notes.mjs serves these files from git per request, so committing them
-// must not cost a deploy. If this ever flips back to DEPLOY, publishing
-// is billable again and the decoupling is broken.
-test("a whole publish does not spend a build", () => {
-  const { code, output } = guard({
+// Astro source is the site now, so a change here must deploy.
+test("an app source change deploys", () => {
+  const { code } = guard({
     cached: commits["tests-and-ci-only"],
-    head: commits["a-publish"],
+    head: commits["app-source"],
   });
-  assert.equal(code, SKIP);
-  assert.match(output, /none of them served/);
+  assert.equal(code, DEPLOY);
 });
 
 test("an unchanged tree does not spend a build", () => {
   const { code } = guard({
-    cached: commits["a-publish"],
-    head: commits["a-publish"],
+    cached: commits["app-source"],
+    head: commits["app-source"],
   });
   assert.equal(code, SKIP);
 });
@@ -162,7 +156,7 @@ test("deploy previews and branch deploys do not spend a build", () => {
 
 test("a new page deploys", () => {
   const { code } = guard({
-    cached: commits["field-notes-css"],
+    cached: commits["app-source"],
     head: commits["a-new-page"],
   });
   assert.equal(code, DEPLOY);
@@ -170,7 +164,7 @@ test("a new page deploys", () => {
 
 test("a function change deploys", () => {
   const { code } = guard({
-    cached: commits["a-publish"],
+    cached: commits["app-source"],
     head: commits["a-function"],
   });
   assert.equal(code, DEPLOY);
@@ -182,17 +176,6 @@ test("netlify.toml deploys -- it carries the routing and feed headers", () => {
     head: commits["netlify-config"],
   });
   assert.equal(code, DEPLOY);
-});
-
-// field-notes.css is the one file in that folder still served from the
-// build, so it's the one that must still deploy.
-test("field-notes.css deploys -- the function does not serve it", () => {
-  const { code, output } = guard({
-    cached: commits["netlify-config"],
-    head: commits["field-notes-css"],
-  });
-  assert.equal(code, DEPLOY);
-  assert.match(output, /field-notes\.css/);
 });
 
 // One build-served file among ignored ones must still ship. Getting this
@@ -209,7 +192,7 @@ test("a build-served file mixed with ignored ones still deploys", () => {
 /* ------------------------------------------------------ failing safe */
 
 test("no cached commit deploys rather than guessing", () => {
-  const { code, output } = guard({ cached: "", head: commits["a-publish"] });
+  const { code, output } = guard({ cached: "", head: commits["app-source"] });
   assert.equal(code, DEPLOY);
   assert.match(output, /first deploy/);
 });
@@ -217,7 +200,7 @@ test("no cached commit deploys rather than guessing", () => {
 test("a cached commit missing from a shallow clone deploys", () => {
   const { code, output } = guard({
     cached: "deadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
-    head: commits["a-publish"],
+    head: commits["app-source"],
   });
   assert.equal(code, DEPLOY);
   assert.match(output, /can't diff safely/);

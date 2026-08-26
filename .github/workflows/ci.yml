@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   check:
-    name: format, links, no build step
+    name: format, tests, build
     runs-on: ubuntu-latest
 
     steps:
@@ -27,23 +27,67 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
+          cache: npm
 
-      # Pinned deliberately. There is no package.json to lock a version in,
-      # so an unpinned `npx prettier` would let a new upstream release change
-      # the formatting rules and turn CI red with no commit behind it. Keep
-      # this in step with the version named in README.md.
+      # `npm install`, not `npm ci`, and deliberately so. sharp and rolldown
+      # both ship optional platform packages whose optional *peer* deps
+      # (@emnapi/*) npm resolves to different versions on Linux than on the
+      # machine that generated the lockfile -- so `npm ci` fails with
+      # "Missing: @emnapi/core from lock file" no matter how many times the
+      # lock is regenerated. That's npm/cli#4828, which npm's own error
+      # message cites. `--omit=optional` isn't a way out either: it strips
+      # rolldown's native binding, which Astro's bundler needs to build.
+      #
+      # The lockfile still pins every version it can resolve; what's left
+      # floating is exactly the set of platform binaries that are
+      # platform-specific by definition.
+      - name: Install
+        run: npm install --no-audit --no-fund
+
       - name: Check formatting
-        run: npx --yes prettier@3.9.6 --check "**/*.{html,css,js,json,md}"
+        run: npm run format:check
 
-      - name: Check local links resolve
-        run: node .github/scripts/check-links.mjs
+      # These used to exist and never run, which meant a green tick said
+      # nothing about whether the code worked. They run now.
+      - name: Unit tests
+        run: npm test
 
-      # The no-build-step, no-runtime-dependency rule is the point of the
-      # project (see CLAUDE.md), not a temporary state. It is easy to erode by
-      # accident, so it is asserted rather than trusted.
-      - name: Check the site still needs no build step
+      # The build is the check that matters most: it's what actually
+      # produces the SSR function Netlify deploys. Dummy Supabase values
+      # are enough -- nothing here talks to the database.
+      - name: Build
+        env:
+          PUBLIC_SUPABASE_URL: https://example.supabase.co
+          PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+        run: npm run build
+
+      - name: Check the SSR function was emitted
         run: |
           fail() { echo "::error::$1"; exit 1; }
-          [ ! -e package.json ] || fail "package.json appeared -- this site is meant to run with no build step and no install"
-          [ ! -e node_modules ] || fail "node_modules is committed -- it should be ignored, not tracked"
-          [ -f index.html ] || fail "index.html is missing -- opening it directly is the whole distribution model"
+          [ -d .netlify/v1/functions/ssr ] || fail "no SSR function -- the adapter didn't produce one, so field notes would 404 in production"
+          [ -f dist/index.html ] || fail "dist/index.html is missing -- the hand-written pages didn't make it into the build"
+          [ -f dist/pages/starfield/starfield.html ] || fail "the static pieces are missing from dist/"
+
+      # A real end-to-end pass: the built server, real auth handling, real
+      # rendering, against a fake Supabase. This is the check that would
+      # have caught the previous attempt shipping a 404.
+      - name: Integration test
+        env:
+          PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+          PUBLIC_SUPABASE_ANON_KEY: fake-anon-key
+          SITE_URL: http://localhost:4321
+        run: |
+          # `astro dev` detaches into a background daemon and returns, so
+          # there is no job to background here -- just something to poll
+          # for, and to stop afterwards.
+          npx astro dev --port 4321
+          for i in $(seq 1 60); do
+            curl -sf -o /dev/null http://localhost:4321/admin && break
+            sleep 1
+          done
+          curl -sf -o /dev/null http://localhost:4321/admin \
+            || { echo "::error::dev server never came up"; npx astro dev logs; exit 1; }
+          node tests/integration.mjs
+          status=$?
+          npx astro dev stop || true
+          exit $status

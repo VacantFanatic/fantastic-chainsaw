@@ -1,0 +1,152 @@
+.admin {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 4rem;
+}
+
+.admin__label {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 0 0 1rem;
+}
+
+body.phosphor .admin__label {
+  color: var(--phosphor-dim);
+}
+
+.admin__who {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  margin: 0 0 2rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+}
+
+body.phosphor .admin__who {
+  color: var(--phosphor-dim);
+}
+
+.admin__field {
+  margin-bottom: 1.5rem;
+}
+
+.admin__field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.admin__field input,
+.admin__field select,
+.admin__field textarea {
+  width: 100%;
+  font-family: var(--serif);
+  font-size: 1rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body.phosphor .admin__field input,
+body.phosphor .admin__field select,
+body.phosphor .admin__field textarea {
+  border-color: var(--phosphor-line);
+  background: var(--phosphor-bg);
+  color: var(--phosphor-fg);
+}
+
+.admin__field input:focus-visible,
+.admin__field select:focus-visible,
+.admin__field textarea:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.admin__field textarea {
+  min-height: 14rem;
+  resize: vertical;
+  font-family: var(--serif);
+}
+
+.admin__hint {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  margin-top: 0.4rem;
+}
+
+body.phosphor .admin__hint {
+  color: var(--phosphor-dim);
+}
+
+.admin__submit {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  background: transparent;
+  border: 1px solid var(--ink);
+  color: var(--ink);
+  padding: 0.6rem 1.2rem;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+body.phosphor .admin__submit {
+  border-color: var(--phosphor-fg);
+  color: var(--phosphor-fg);
+}
+
+.admin__submit:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.admin__submit:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Rust on the border only, never on the label -- --rust misses AA for
+   normal text on --paper (4.47:1, see NOTES.md), and a button that takes
+   something down is the last place to be cute about it. */
+.admin__submit--danger {
+  border-color: var(--rust);
+}
+
+body.phosphor .admin__submit--danger {
+  border-color: var(--phosphor-fg);
+}
+
+.admin__rule {
+  border: 0;
+  border-top: 1px dashed var(--line);
+  margin: 3rem 0 2rem;
+}
+
+body.phosphor .admin__rule {
+  border-top-color: var(--phosphor-line);
+}
+
+.admin__status {
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  margin-top: 1.2rem;
+}
+
+.admin__status[data-state="error"] {
+  color: var(--rust);
+}
+
+.admin__status[data-state="ok"] {
+  color: var(--mint);
+}
+
+body.phosphor .admin__status[data-state="ok"] {
+  color: var(--phosphor-fg);
+}

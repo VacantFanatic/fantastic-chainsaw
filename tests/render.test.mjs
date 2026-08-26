@@ -1,12 +1,9 @@
-// Unit tests for publish.mjs's pure helpers -- the generator logic that
-// can't otherwise be checked without a live Netlify + GitHub deploy. No
-// network calls here, no npm dependency: node:test and node:assert/strict
-// are both built in. Run with `node --test tests/`.
+// Unit tests for the field note renderer -- the plain-text-in, HTML-out
+// logic that survived the move from static files to Astro + Supabase
+// untouched. Same assertions as before that move; only the import changed.
 //
-// Lives outside netlify/functions/ on purpose -- Netlify's function
-// bundler treats every file in that directory as a function to deploy,
-// and rejects "publish.test" as an invalid function name (the "." isn't
-// allowed in a function name).
+// No network, no npm dependency, no database: node:test and node:assert
+// are built in, and everything under test is pure. Run with `npm test`.
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -20,13 +17,10 @@ import {
   humanDate,
   rfc822,
   makeExcerpt,
-  renderPostPage,
-  renderListingPage,
-  renderFeed,
   extractStandaloneLinks,
   parseOgTags,
   isFetchableUrl,
-} from "../netlify/functions/publish.mjs";
+} from "../src/lib/render.mjs";
 
 test("slugify: lowercases, strips punctuation, collapses to dashes", () => {
   assert.equal(
@@ -119,75 +113,6 @@ test("makeExcerpt: truncates long text at a word boundary with an ellipsis", () 
 
 test("makeExcerpt: collapses internal whitespace/newlines", () => {
   assert.equal(makeExcerpt("line one\n\nline   two"), "line one line two");
-});
-
-test("renderPostPage: escapes the title, includes the rendered body", () => {
-  const post = { title: "A <script> Post", date: "2026-08-26T00:00:00.000Z" };
-  const html = renderPostPage(post, "hello\n\nworld");
-  assert.ok(html.includes("A &lt;script&gt; Post"));
-  assert.ok(html.includes("<p>hello</p>"));
-  assert.ok(html.includes("<p>world</p>"));
-  assert.ok(html.includes('href="../field-notes.html"'));
-  assert.ok(html.includes('href="../../../index.html"'));
-  assert.ok(html.includes('href="../../../css/style.css"'));
-});
-
-test("renderListingPage: empty state has no <ol>", () => {
-  const html = renderListingPage([]);
-  assert.ok(html.includes("nothing published yet."));
-  assert.ok(!html.includes("<ol"));
-});
-
-test("renderListingPage: numbers entries newest-first counting down", () => {
-  const posts = [
-    {
-      slug: "b",
-      title: "B",
-      date: "2026-08-26T00:00:00.000Z",
-      excerpt: "b excerpt",
-    },
-    {
-      slug: "a",
-      title: "A",
-      date: "2026-08-20T00:00:00.000Z",
-      excerpt: "a excerpt",
-    },
-  ];
-  const html = renderListingPage(posts);
-  const numB = html.indexOf('<span class="entry__num">02</span>');
-  const numA = html.indexOf('<span class="entry__num">01</span>');
-  assert.ok(numB !== -1 && numA !== -1 && numB < numA);
-});
-
-test("renderFeed: escapes titles for XML and wraps descriptions in CDATA", () => {
-  const posts = [
-    {
-      slug: "x",
-      title: "A & B",
-      date: "2026-08-26T00:00:00.000Z",
-      excerpt: "an excerpt",
-    },
-  ];
-  const xml = renderFeed(posts, "https://example.netlify.app");
-  assert.ok(xml.includes("<title>A &amp; B</title>"));
-  assert.ok(
-    xml.includes(
-      "<link>https://example.netlify.app/pages/field-notes/posts/x.html</link>",
-    ),
-  );
-  assert.ok(
-    xml.includes(
-      '<guid isPermaLink="true">https://example.netlify.app/pages/field-notes/posts/x.html</guid>',
-    ),
-  );
-  assert.ok(xml.includes("<description><![CDATA[an excerpt]]></description>"));
-});
-
-test("renderFeed: zero posts still produces valid channel markup", () => {
-  const xml = renderFeed([], "https://example.netlify.app");
-  assert.ok(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>'));
-  assert.ok(xml.includes("<channel>"));
-  assert.ok(!xml.includes("<item>"));
 });
 
 /* ---------------------------------------------------------

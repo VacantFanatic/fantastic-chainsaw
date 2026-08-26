@@ -1,0 +1,7 @@
+---
+// Legacy note URLs: /pages/field-notes/posts/<slug>.html
+export const prerender = false;
+const { rest } = Astro.params;
+const slug = String(rest ?? "").replace(/\.html$/, "");
+return Astro.redirect(slug ? `/field-notes/${slug}` : "/field-notes", 301);
+---

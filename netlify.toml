@@ -1,57 +1,37 @@
 [build]
-  publish = "."
-  # Builds are the scarce resource here, so most commits shouldn't spend
-  # one. This decides; see netlify/should-deploy.mjs for what it skips and
-  # why. Exit 0 cancels the build, non-zero proceeds -- backwards from the
-  # obvious reading, which is Netlify's convention, not a typo.
+  command = "npm run build"
+  publish = "dist"
+  # Builds are still worth not wasting, but they no longer have anything to
+  # do with publishing: notes live in Supabase, so writing one doesn't touch
+  # this repo at all. What's left is skipping builds for commits that change
+  # nothing a visitor sees. See netlify/should-deploy.mjs -- exit 0 cancels
+  # the build, non-zero proceeds, which is Netlify's convention, not a typo.
   ignore = "node netlify/should-deploy.mjs"
 
-[functions]
-  directory = "netlify/functions"
+[build.environment]
+  NODE_VERSION = "22"
 
-# Field notes are served from git at request time by netlify/functions/
-# notes.mjs, not from the build -- that's what lets a publish go live
-# without a deploy. `force = true` matters: without it Netlify serves the
-# copy baked into the last build, which is exactly the stale file we're
-# routing around. The `?file=` parameter is belt to the function's own
-# `config.path` braces, so it gets an unambiguous target either way.
-#
-# field-notes.css is deliberately NOT here. It's hand-owned, only ever
-# changes in a deploy, and letting the CDN serve it statically saves a
-# function invocation on every pageview.
-
-[[redirects]]
-  from = "/pages/field-notes/field-notes.html"
-  to = "/.netlify/functions/notes?file=pages/field-notes/field-notes.html"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/pages/field-notes/posts.json"
-  to = "/.netlify/functions/notes?file=pages/field-notes/posts.json"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/pages/field-notes/feed.xml"
-  to = "/.netlify/functions/notes?file=pages/field-notes/feed.xml"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/pages/field-notes/posts/*"
-  to = "/.netlify/functions/notes?file=pages/field-notes/posts/:splat"
-  status = 200
-  force = true
-
-[[redirects]]
-  from = "/pages/field-notes/sources/*"
-  to = "/.netlify/functions/notes?file=pages/field-notes/sources/:splat"
-  status = 200
-  force = true
+# The Astro Netlify adapter generates the server function itself, so there
+# is no hand-written functions directory any more.
 
 [[headers]]
-  for = "/pages/field-notes/feed.xml"
+  for = "/field-notes/feed.xml"
 
   [headers.values]
     Content-Type = "application/rss+xml; charset=utf-8"
+
+# Defence in depth. The admin page already refuses to render its UI to
+# anyone who isn't a signed-in admin, but there's no reason for it to be
+# indexable either.
+[[headers]]
+  for = "/admin"
+
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/*"
+
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

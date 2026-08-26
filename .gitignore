@@ -1,14 +1,7 @@
-# Dev-only tooling. Nothing in here is needed to view the site: `npx prettier`
-# is the only command the README asks for, and it leaves no runtime dependency
-# behind. Keeping node_modules out is what makes that claim stay true.
 node_modules/
-npm-debug.log*
-.npm/
-
-# OS and editor cruft
-.DS_Store
-Thumbs.db
-desktop.ini
-.vscode/
-.idea/
-*.swp
+dist/
+.netlify/
+.astro/
+.env
+.env.*
+!.env.example

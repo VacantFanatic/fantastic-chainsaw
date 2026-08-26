@@ -1,0 +1,51 @@
+---
+// A single note. Server-rendered for the same reason the listing is.
+export const prerender = false;
+
+import Base from "../../layouts/Base.astro";
+import { supabaseFor, isConfigured } from "../../lib/supabase.js";
+import { getBySlug } from "../../lib/notes.js";
+import { humanDate, renderBody } from "../../lib/render.mjs";
+
+const { slug } = Astro.params;
+
+// Old published URLs ended in .html. They're promises, so honour them
+// with a permanent redirect to the clean form rather than a 404.
+if (slug?.endsWith(".html")) {
+  return Astro.redirect(`/field-notes/${slug.slice(0, -5)}`, 301);
+}
+
+if (!isConfigured()) return new Response("Not configured", { status: 503 });
+
+let note = null;
+try {
+  note = await getBySlug(supabaseFor(Astro.cookies, Astro.request.url), slug);
+} catch (error) {
+  console.error("[field-notes] read failed:", error);
+  return new Response("Temporarily unavailable", { status: 503 });
+}
+
+// RLS already hides drafts from anonymous readers; this turns "invisible"
+// into an honest 404 rather than a blank page.
+if (!note || note.status !== "published") {
+  return new Response("Not found", { status: 404 });
+}
+
+const body = renderBody(
+  note.body,
+  new Map(Object.entries(note.link_previews ?? {})),
+);
+---
+
+<Base title={`${note.title} — STATIC`} description={note.excerpt}>
+  <main class="note">
+    <p class="note__nav">
+      <a href="/field-notes">&larr; back to field notes</a>
+      &middot;
+      <a href="/index.html">back to index</a>
+    </p>
+    <p class="note__date">{humanDate(note.published_at)}</p>
+    <h1 class="note__title">{note.title}</h1>
+    <div class="note__body" set:html={body} />
+  </main>
+</Base>

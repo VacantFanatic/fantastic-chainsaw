@@ -1,0 +1,163 @@
+---
+// The publish / edit / status behaviour. Rendered only for a signed-in
+// admin, so nobody else is served a line of it. See LoginScript.astro for
+// why this is a component instead of an inline block.
+const { notes } = Astro.props;
+---
+
+<script is:inline define:vars={{ initialNotes: notes }}>
+  const el = (id) => document.getElementById(id);
+
+  function statusSetter(node) {
+    return (state, text) => {
+      node.dataset.state = state;
+      node.textContent = text;
+    };
+  }
+
+  async function api(method, path, payload) {
+    const res = await fetch(path, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.detail || data.error || `HTTP ${res.status}`);
+    }
+    return data;
+  }
+
+  /* ----------------------------------------------------------- the desk */
+
+  el("logout").addEventListener("click", async () => {
+    await api("POST", "/api/auth", { action: "logout" }).catch(() => {});
+    window.location.reload();
+  });
+
+  {
+    const publishForm = el("publish-form");
+    let notes = initialNotes;
+
+    const editSlug = el("edit-slug");
+    const statusSlug = el("status-slug");
+    const editHint = el("edit-hint");
+    const editTitle = el("edit-title");
+    const editBody = el("edit-body");
+
+    const setPublishStatus = statusSetter(el("publish-status"));
+    const setEditStatus = statusSetter(el("edit-status"));
+    const setStatusStatus = statusSetter(el("status-status"));
+
+    function label(note) {
+      return note.status === "published" ? note.title : `${note.title} (draft)`;
+    }
+
+    function renderPickers() {
+      for (const select of [editSlug, statusSlug]) {
+        const keep = select.value;
+        select.replaceChildren(
+          ...notes.map((note) => {
+            const option = document.createElement("option");
+            option.value = note.slug;
+            option.textContent = label(note);
+            return option;
+          }),
+        );
+        if (notes.some((n) => n.slug === keep)) select.value = keep;
+      }
+      const empty = notes.length === 0;
+      editHint.textContent = empty
+        ? "nothing written yet."
+        : "pick a note to load its text.";
+      for (const form of ["edit-form", "status-form"]) {
+        el(form).querySelector(".admin__submit").disabled = empty;
+      }
+      if (!empty) loadEditable(editSlug.value);
+    }
+
+    // The body comes from the server render, so there's no fetch here
+    // and nothing to go stale between publishing and editing.
+    function loadEditable(slug) {
+      const note = notes.find((n) => n.slug === slug);
+      if (!note) return;
+      editTitle.value = note.title;
+      editBody.value = note.body;
+      setEditStatus("", "");
+    }
+
+    editSlug.addEventListener("change", () => loadEditable(editSlug.value));
+
+    publishForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const title = el("publish-title").value.trim();
+      const body = el("publish-body").value.trim();
+      if (!title || !body) {
+        setPublishStatus("error", "title and body are both required.");
+        return;
+      }
+      setPublishStatus("", "publishing…");
+      try {
+        const { note } = await api("POST", "/api/notes", { title, body });
+        notes = [note, ...notes];
+        renderPickers();
+        el("publish-title").value = "";
+        el("publish-body").value = "";
+        setPublishStatus("ok", `published -- /field-notes/${note.slug}`);
+      } catch (error) {
+        setPublishStatus("error", error.message);
+      }
+    });
+
+    el("edit-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const slug = editSlug.value;
+      const title = editTitle.value.trim();
+      const body = editBody.value.trim();
+      if (!title || !body) {
+        setEditStatus("error", "title and body are both required.");
+        return;
+      }
+      setEditStatus("", "saving…");
+      try {
+        const { note } = await api("PUT", "/api/notes", {
+          slug,
+          title,
+          body,
+        });
+        notes = notes.map((n) => (n.slug === slug ? note : n));
+        renderPickers();
+        setEditStatus("ok", `saved -- /field-notes/${note.slug}`);
+      } catch (error) {
+        setEditStatus("error", error.message);
+      }
+    });
+
+    el("status-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const slug = statusSlug.value;
+      const note = notes.find((n) => n.slug === slug);
+      if (!note) return;
+      const next = note.status === "published" ? "draft" : "published";
+      setStatusStatus("", "saving…");
+      try {
+        const { note: updated } = await api("PATCH", "/api/notes", {
+          slug,
+          status: next,
+        });
+        notes = notes.map((n) => (n.slug === slug ? updated : n));
+        renderPickers();
+        setStatusStatus(
+          "ok",
+          next === "draft"
+            ? `unpublished -- ${updated.title} is a draft now.`
+            : `published -- ${updated.title} is live again.`,
+        );
+      } catch (error) {
+        setStatusStatus("error", error.message);
+      }
+    });
+
+    renderPickers();
+  }
+</script>

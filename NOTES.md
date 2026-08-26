@@ -1112,3 +1112,88 @@ the thing there's no capacity for. `npx netlify-cli deploy --prod --dir=.`
 uploads a prebuilt directory instead of running a build in Netlify's CI,
 and there's no build step here to skip -- worth confirming against the
 plan's own metering before relying on it.
+
+## Field notes rebuilt on Astro + Supabase
+
+The two previous entries describe an approach that did not work. Recording
+why, because the failure was informative and the replacement is shaped by
+it.
+
+**What actually broke.** Serving notes from git at request time relied on
+intercepting `/pages/field-notes/*` with a forced Netlify rewrite to a
+function. Deployed, those paths returned Netlify's own 404 page: the
+request never reached the function at all. The functions themselves were
+live and healthy the whole time (`/api/edit` and `/api/unpublish` both
+answered 405 to a GET), so the fault was purely in the routing trick. That
+trick was the one part of the design that could not be tested without
+deploying, and it was the one part that was wrong.
+
+**The lesson worth keeping.** 73 unit tests passed against an
+implementation that had never served a single page. Coverage of pure
+functions said nothing about whether the thing worked. Everything below is
+arranged so that cannot happen again.
+
+- **Content moved out of git entirely.** Notes are rows in Supabase,
+  rendered on request by Astro. Publishing touches no file, produces no
+  commit, and triggers no build -- which was the actual requirement all
+  along, and which no amount of cleverness with static files was going to
+  satisfy while Netlify build capacity was exhausted.
+- **Row-level security is the boundary, not the app.** There is no
+  service-role key in the codebase. Reads use the anon key and see only
+  published notes; writes run as the signed-in admin's own session. The
+  `currentAdmin()` check in the API routes exists to return a clean 401 --
+  if it were deleted tomorrow, the database would still refuse the write.
+- **Signed in is not authorised.** Write policies require membership of an
+  `admins` table. The integration test signs in as a real, valid, non-admin
+  user and asserts it cannot publish and is served no admin UI. That test
+  found a genuine gap in the _test double_ -- the first version handed
+  every user the same access token, which would have made a real
+  authorisation bug invisible.
+- **The shared secret is gone.** It is now Supabase Auth: a hashed
+  password, a session in an httpOnly cookie that page scripts cannot read,
+  and a token verified with Supabase on every request rather than trusted
+  from the cookie. `sameSite=lax` is what stands in for CSRF tokens on the
+  JSON endpoints.
+- **Unpublishing stopped being destructive.** It sets `status = 'draft'`.
+  The old implementation deleted files and offered git history as the undo,
+  which is not an undo anybody would actually use.
+- **The renderer survived unchanged.** `src/lib/render.mjs` is the same
+  plain-text-to-HTML code, with the same tests, that the static version
+  used. Paragraph handling, escaping, inline linkification and preview
+  cards all behave identically -- the move changed where notes are stored,
+  not how they read.
+- **Legacy URLs redirect permanently.** An old post URL sends a 301 to its
+  `/field-notes/<slug>` equivalent, and the old listing URL likewise. Slugs and publication dates were carried over verbatim in
+  `supabase/seed.sql`, including the recovered link preview cards, so no
+  previously published URL is dead.
+
+**What is now actually verified.** A fake Supabase (in `tests/`) speaks
+enough GoTrue and PostgREST to run the real application: sign
+in, publish, read the rendered HTML back, edit, unpublish, confirm the page
+404s and the listing and feed drop it, republish, sign out. It enforces the
+RLS rules the app depends on, so an authorisation regression fails a test
+rather than passing quietly. Roughly 60 assertions, plus 43 unit tests, and
+CI now runs all of it -- plus the build, plus a check that the SSR function
+was actually emitted.
+
+Two assertions in that suite were wrong on the first pass and worth noting,
+because both were _my_ error rather than the app's. A naive
+`html.includes("<script>...")` check flagged markup sitting inside a quoted
+attribute value, where `<` is inert text and nothing can execute; and an
+`onerror=alert` substring check flagged correctly-escaped text in a
+`<title>`. Both were replaced with checks on the property that matters --
+no script or img element in the rendered body, no attribute breakout.
+
+**The cost, stated plainly.** There is now a build step, a `package.json`,
+and 744 packages in `node_modules`, ten of which carry high-severity
+advisories via `@astrojs/netlify`'s local-dev tooling (sharp, ipx,
+extract-zip). They are dev-time rather than in the deployed function, and
+`npm audit fix` cannot resolve them without breaking changes. This is the
+price of the framework and it should be re-checked periodically rather than
+forgotten. `public/` keeps the hand-written pages exactly as they were --
+still real HTML, still openable from disk, still shipping no framework to a
+reader.
+
+Open items: the Supabase project itself has to be created and seeded before
+any of this runs, and none of it has been exercised against a real Supabase
+instance -- only against the fake. The first real sign-in is the test.

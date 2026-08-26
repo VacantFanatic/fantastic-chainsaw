@@ -1,0 +1,40 @@
+---
+// The sign-in form's behaviour. A component rather than an inline block in
+// the page because a <script> nested inside a JSX conditional is valid
+// Astro but not parseable by prettier-plugin-astro -- and this genuinely
+// must be conditional: a visitor who isn't signed in should never receive
+// the desk's JavaScript, and vice versa.
+---
+
+<script is:inline>
+  (() => {
+    const form = document.getElementById("login-form");
+    const status = document.getElementById("login-status");
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      status.dataset.state = "";
+      status.textContent = "signing in…";
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: document.getElementById("login-email").value.trim(),
+          password: document.getElementById("login-password").value,
+        }),
+      });
+      if (res.ok) {
+        // Reload rather than swapping the UI in place: the page is
+        // rendered per-session on the server, so a reload is what
+        // produces the signed-in version.
+        window.location.reload();
+        return;
+      }
+      const data = await res.json().catch(() => ({}));
+      status.dataset.state = "error";
+      status.textContent =
+        data.error === "invalid_credentials"
+          ? "that email and password don't match."
+          : data.error || `HTTP ${res.status}`;
+    });
+  })();
+</script>
