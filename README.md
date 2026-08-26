@@ -101,7 +101,7 @@ Environment variables) before using `pages/admin/admin.html`:
   password field on each publish; never stored in the browser.
 - `GITHUB_TOKEN` — a GitHub fine-grained personal access token, scoped to
   **just this repo**, with Contents: Read and write permission.
-- `GITHUB_REPOSITORY` — `owner/repo`, e.g. `VacantFanatic/fantastic-chainsaw`.
+- `GITHUB_REPOSITORY` — `owner/repo`, e.g. `your-username/your-repo-name`.
 
 `URL` (the site's own address, used for absolute RSS links) is injected
 automatically by Netlify — nothing to set.
