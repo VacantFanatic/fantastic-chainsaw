@@ -1,0 +1,180 @@
+---
+// The field notes desk. Server-rendered, and gated before a single byte of
+// the management UI is produced: if you aren't a signed-in admin, the
+// markup below simply isn't generated for you. There is nothing to hide
+// with CSS and nothing to reveal by reading the page source.
+export const prerender = false;
+
+import Base from "../../layouts/Base.astro";
+import "../../styles/admin.css";
+import { supabaseFor, currentAdmin, isConfigured } from "../../lib/supabase.js";
+import { listAll } from "../../lib/notes.js";
+import LoginScript from "../../components/LoginScript.astro";
+import DeskScript from "../../components/DeskScript.astro";
+
+const configured = isConfigured();
+
+let admin = null;
+let notes = [];
+let loadError = null;
+
+if (configured) {
+  const supabase = supabaseFor(Astro.cookies, Astro.request.url);
+  admin = await currentAdmin(supabase);
+  if (admin) {
+    try {
+      notes = await listAll(supabase);
+    } catch (error) {
+      loadError = "couldn't load your notes.";
+      console.error("[admin] list failed:", error);
+    }
+  }
+}
+
+// Only what the browser actually needs. No ids, no timestamps, no
+// anything the UI doesn't render.
+const forClient = notes.map(({ slug, title, body, status }) => ({
+  slug,
+  title,
+  body,
+  status,
+}));
+---
+
+<Base title="field notes desk — STATIC">
+  <meta name="robots" content="noindex, nofollow" slot="head" />
+
+  <main class="admin">
+    {
+      !configured && (
+        <>
+          <p class="admin__label">field notes desk</p>
+          <p class="admin__status" data-state="error">
+            Supabase isn't configured. Set PUBLIC_SUPABASE_URL and
+            PUBLIC_SUPABASE_ANON_KEY, then reload.
+          </p>
+        </>
+      )
+    }
+
+    {
+      configured && !admin && (
+        <>
+          <p class="admin__label">sign in</p>
+          <form id="login-form">
+            <div class="admin__field">
+              <label for="login-email">email</label>
+              <input
+                id="login-email"
+                type="email"
+                required
+                autocomplete="username"
+              />
+            </div>
+            <div class="admin__field">
+              <label for="login-password">password</label>
+              <input
+                id="login-password"
+                type="password"
+                required
+                autocomplete="current-password"
+              />
+            </div>
+            <button class="admin__submit" type="submit">
+              sign in
+            </button>
+            <p class="admin__status" id="login-status" role="status" />
+          </form>
+        </>
+      )
+    }
+
+    {
+      configured && admin && (
+        <>
+          <p class="admin__who">
+            <span>signed in as {admin.email}</span>
+            <button class="admin__submit" id="logout" type="button">
+              sign out
+            </button>
+          </p>
+
+          {loadError && (
+            <p class="admin__status" data-state="error">
+              {loadError}
+            </p>
+          )}
+
+          <p class="admin__label">publish a field note</p>
+          <form id="publish-form">
+            <div class="admin__field">
+              <label for="publish-title">title</label>
+              <input id="publish-title" type="text" required />
+            </div>
+            <div class="admin__field">
+              <label for="publish-body">body</label>
+              <textarea id="publish-body" required />
+              <p class="admin__hint">
+                plain text -- a blank line starts a new paragraph, and a link on
+                a line by itself becomes a preview card.
+              </p>
+            </div>
+            <button class="admin__submit" type="submit">
+              publish
+            </button>
+            <p class="admin__status" id="publish-status" role="status" />
+          </form>
+
+          <hr class="admin__rule" />
+
+          <p class="admin__label">edit a field note</p>
+          <form id="edit-form">
+            <div class="admin__field">
+              <label for="edit-slug">note</label>
+              <select id="edit-slug" required />
+              <p class="admin__hint" id="edit-hint" />
+            </div>
+            <div class="admin__field">
+              <label for="edit-title">title</label>
+              <input id="edit-title" type="text" required />
+            </div>
+            <div class="admin__field">
+              <label for="edit-body">body</label>
+              <textarea id="edit-body" required />
+              <p class="admin__hint">
+                the URL and the original date stay put -- an edit revises a
+                note, it doesn't republish it.
+              </p>
+            </div>
+            <button class="admin__submit" type="submit">
+              save changes
+            </button>
+            <p class="admin__status" id="edit-status" role="status" />
+          </form>
+
+          <hr class="admin__rule" />
+
+          <p class="admin__label">publish status</p>
+          <form id="status-form">
+            <div class="admin__field">
+              <label for="status-slug">note</label>
+              <select id="status-slug" required />
+              <p class="admin__hint">
+                unpublishing hides a note from the listing, the feed and the
+                site. it becomes a draft -- nothing is deleted, and you can put
+                it back here.
+              </p>
+            </div>
+            <button class="admin__submit admin__submit--danger" type="submit">
+              toggle published / draft
+            </button>
+            <p class="admin__status" id="status-status" role="status" />
+          </form>
+        </>
+      )
+    }
+  </main>
+
+  {configured && !admin && <LoginScript />}
+  {configured && admin && <DeskScript notes={forClient} />}
+</Base>

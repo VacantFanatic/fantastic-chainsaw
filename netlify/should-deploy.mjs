@@ -29,12 +29,16 @@
 
 import { execFileSync } from "node:child_process";
 
-// Two kinds of file don't need a build. Anything NOT matched here is
-// assumed to be site-affecting, which is the safe way round: a new
-// top-level thing deploys by default instead of being silently ignored.
+// Files that exist for people working on the repo, not for people reading
+// the site. Anything NOT matched here is assumed to be site-affecting,
+// which is the safe way round: a new top-level thing deploys by default
+// instead of being silently ignored.
+//
+// Note what is NOT in this list any more: field notes. They used to be
+// generated files committed to the repo, and had to be exempted so
+// publishing didn't cost a build. They now live in Supabase, so publishing
+// doesn't touch git at all -- there is nothing left to exempt.
 const IGNORED = [
-  // 1. Things that exist for people working on the repo, not for people
-  //    reading the site.
   /^[^/]+\.md$/, // README.md, NOTES.md, CLAUDE.md
   /^tests\//,
   /^\.github\//,
@@ -44,19 +48,6 @@ const IGNORED = [
   /^\.gitattributes$/,
   /^\.prettierrc\.json$/,
   /^\.prettierignore$/,
-
-  // 2. Field note content, which netlify/functions/notes.mjs serves from
-  //    git per request rather than from the build. A publish, an edit and
-  //    an unpublish touch only these paths, so none of them costs a
-  //    deploy -- that's the whole point of the serving function.
-  //
-  //    field-notes.css is deliberately absent: it's hand-owned and still
-  //    served statically from the build, so changing it must deploy.
-  /^pages\/field-notes\/field-notes\.html$/,
-  /^pages\/field-notes\/posts\.json$/,
-  /^pages\/field-notes\/feed\.xml$/,
-  /^pages\/field-notes\/posts\//,
-  /^pages\/field-notes\/sources\//,
 ];
 
 function build(reason) {

@@ -20,169 +20,146 @@ Concretely that means:
   be either or both.
 - **Every page is allowed to be its own thing.** Shared tokens exist so
   the site feels like one place, but a piece is free to override them
-  entirely (see `pages/starfield/starfield.html`). Consistency serves the work; it
-  doesn't outrank it.
+  entirely (see `public/pages/starfield/starfield.html`). Consistency
+  serves the work; it doesn't outrank it.
 - **Visible seams are fine.** Monospace labels, `index of /`, dashed
   rules, "broadcasting since 2026", CRT phosphor mode. The construction
   showing is the aesthetic.
 
-## Hard constraints
+## Constraints, and what changed
 
-These are the point of the project, not temporary limitations:
+This was, for most of its life, a site with no framework, no build step and
+no dependencies — every page a real HTML file you could open off disk. That
+is no longer true of the whole site, and the reason is worth recording so
+nobody reverses it by accident.
 
-- **No framework.** No React, no Svelte, no static site generator.
-- **No build step.** Cloning the repo and opening `index.html` works.
-- **No runtime dependencies.** Nothing that needs `npm install` to view
-  the site. Prettier is dev-only tooling and stays that way.
-- **Hand-written HTML, CSS, and vanilla JS.**
+Field notes used to be published by committing generated HTML to this repo.
+That made publishing a deploy, and Netlify build capacity is a hard,
+exhaustible budget: run out mid-month and the blog cannot publish at all
+until it resets. Two attempts to keep the static model and route around
+that failed — the second shipped a listing that 404'd in production. The
+rule that survived is the one that mattered:
 
-If something seems to need a build step, the answer is almost always to
-want less, not to add a toolchain.
+> **Publishing must never require a deploy.**
 
-All four still hold literally, including after field notes moved to
-request-time serving (see "Publishing does not require a deploy" below):
-every page in the repo is still real, final HTML, and a clone still opens
-in a browser with no tooling. What that change did add is a **delivery**
-dependency — on the deployed site, a field note reaches a reader through
-a function and the GitHub API rather than straight off the CDN. The files
-are unchanged and still served correctly by any plain static host, so
-this is an acceleration layered on top, not a replacement. Don't let it
-become the excuse for a second one.
+So field notes now live in Supabase and are rendered on request by Astro.
+Deploys are for pages and functionality; content never touches git.
 
-A piece can still split its script across multiple files for
-navigability (see `pages/character-generator/`) as long as they're
-loaded as plain `<script src>` tags, in dependency order, with no
-`type="module"` — module scripts refuse to load over `file://`, which
-would break "open `index.html` directly." Classic scripts share one
-global scope across tags (`const`/`let` included, not just functions),
-so this is organization, not architecture.
+What still holds, and is still the point:
 
-## One narrow exception: managing field notes
+- **Hand-written HTML, CSS and vanilla JS.** No UI framework, no component
+  library, no CSS framework, no client-side router. Astro is a renderer and
+  a router; it is not a licence to reach for React.
+- **The pages are still pages.** `public/` holds the hand-written site —
+  `index.html`, the starfield, the character generator — copied to `dist/`
+  byte for byte, still openable from disk, still with no runtime JS beyond
+  what each piece brings itself.
+- **A reader downloads no framework.** Astro ships zero client JavaScript
+  by default and nothing here opts in. The only inline scripts on the whole
+  site are the two on `/admin`, which a reader never sees.
 
-`netlify/functions/` is the one backend on this otherwise fully static
-site, and the one place two of the rules above don't apply. Three
-endpoints, all secret-gated, all driven from `pages/admin/admin.html`:
+What no longer holds, honestly:
 
-- `publish.mjs` (`/api/publish`) — new note from a title + plain text.
-- `edit.mjs` (`/api/edit`) — revise a published note's title and body.
-  The slug and the original date never change: a published URL is a
-  promise, and an edit is not a republish.
-- `unpublish.mjs` (`/api/unpublish`) — take a note back down.
+- **There is a build step**, a `package.json`, and `node_modules`.
+  `npm ci && npm run build` is now required to produce the site.
+- **Field notes are not files.** They are rows. A clone of this repo
+  contains the site but not the writing.
+- **There are dependencies, and they carry advisories.**
+  `@astrojs/netlify` pulls in Netlify's local-dev tooling (sharp, ipx,
+  extract-zip), which reports high-severity issues that don't resolve
+  without breaking changes. They are dev-time, not in the deployed
+  function. This is the real cost of the framework — re-check it, don't
+  forget it.
 
-`publish.mjs` owns the renderers and the GitHub plumbing; the other two
-import from it, so all three produce byte-identical listing and feed
-markup and can't drift apart. The two rules they bend:
+If something seems to need a _second_ framework, the answer is still to
+want less.
 
-- They commit directly to `main`, bypassing the branch-per-change
-  convention on purpose — everywhere else, still branch and PR.
-- `pages/field-notes/field-notes.html` and every `pages/field-notes/posts/
-*.html` are exempted from the Prettier check in `.prettierignore`,
-  because they're regenerated on every publish and Prettier's HTML
-  printer is too whitespace-sensitive to hand-match reliably inside a
-  template string.
+## How field notes work
 
-Every other rule still holds: zero npm dependencies (only built-in
-Node/Fetch APIs, no `package.json` anywhere), so "no runtime dependencies"
-holds for the backend too, and "no build step" still holds for the reading
-experience — every page in the repo is real, final HTML; the functions
-just do by API what a human would otherwise do by hand.
+Three moving parts, and the boundaries between them matter more than any
+one of them.
 
-**One commit per action, always.** Writes go through the Git Data API
-(blob → tree → commit → ref), not the Contents API, because the Contents
-API can only write one file per commit — which meant one publish produced
-four commits and four Netlify builds. Assembling the tree by hand is a few
-more requests for exactly one commit, one build, and an operation that's
-atomic: either the whole note lands or none of it does. Anything added
-here that touches several files must go in the same `ghCommit` call rather
-than a second one.
+**Supabase holds the content and the identity.** `supabase/schema.sql` is
+the whole data model: a `notes` table, an `admins` table, and row-level
+security policies. `supabase/seed.sql` carries the three notes that predate
+the move, with their original slugs, dates and preview cards.
 
-They own five generated things, all of which should be treated as build
-output and never hand-edited: `pages/field-notes/posts.json`,
-`pages/field-notes/field-notes.html`, `pages/field-notes/feed.xml`, every
-`pages/field-notes/posts/<slug>.html`, and every
-`pages/field-notes/sources/<slug>.txt`. A manual edit to any of these will
-be silently overwritten by the next publish or edit.
+**Row-level security is the security boundary — not the application.** Read
+that again before changing anything here:
 
-`sources/` is what makes editing possible: the rendered page is HTML, but
-the thing a human wrote is plain text, and reversing prose back out of
-generated markup is not something to attempt. Each note's source is saved
-verbatim next to it — one file per note rather than one shared JSON blob,
-so prose stays unescaped and a diff shows the paragraph that actually
-changed. Notes published before this existed have no source file; the
-admin form says so instead of offering an empty box that would blank the
-post on save.
+- There is **no service-role key** anywhere in this codebase, and adding
+  one would undo the entire design. Reads use the anon key, which RLS
+  limits to published notes. Writes run as the signed-in admin's own
+  session.
+- Being signed in is **not** authorisation. Write policies require
+  membership of `admins`, so a valid Supabase user who isn't an admin can
+  do exactly what the public can do. `tests/integration.mjs` proves this
+  with a real non-admin account; keep that test.
+- `currentAdmin()` in `src/lib/supabase.js` returns 401 early as a
+  courtesy. It is not what stops an attacker. The database is.
+- Session cookies are `httpOnly` and `sameSite=lax` — the first stops page
+  scripts reading the session, the second is what stands in for CSRF tokens
+  on the JSON endpoints.
 
-The one file in that folder that's safe to hand-edit is
-`pages/field-notes/field-notes.css` — styling isn't touched by any of the
-functions. All three actions happen through `pages/admin/admin.html`, a
-small form gated by a shared secret and deliberately not linked from
-anywhere public.
+**Astro renders.** `src/pages/field-notes/` is server-rendered
+(`export const prerender = false`) so a note is live the moment it's saved.
+`src/lib/render.mjs` is the plain-text-to-HTML renderer carried over
+unchanged from the static era, still pure and still unit-tested — the one
+piece of the old implementation worth keeping.
 
-## Publishing does not require a deploy
+Two rules that are easy to break silently:
 
-**This is the rule the whole field notes design now serves. Writing,
-editing or removing a note must never need a Netlify build.** Build
-capacity is a hard, exhaustible budget — run out and the site cannot be
-deployed at all until it resets, which is exactly the situation this was
-built in response to. A blog that can't publish because the host is out
-of build minutes is broken.
+- **An edit is not a republish.** `updateNote` never puts `slug` or
+  `published_at` in the update payload, so a URL keeps working and an old
+  note doesn't jump to the top of the listing.
+- **Unpublishing is a status change, not a delete.** It sets
+  `status = 'draft'`. The old version deleted files and called git history
+  the undo; this is reversible from the UI.
 
-So field notes are served **from git at request time**, by
-`netlify/functions/notes.mjs`. `publish.mjs` commits real HTML to `main`
-exactly as it always did; the function fetches that committed file when a
-reader asks for it, so a note is live within seconds of the commit and no
-build happens. `netlify.toml` routes the five dynamic paths to it with
-`force = true` — without force, Netlify serves the copy baked into the
-last build, which is the stale file this exists to route around.
+Link previews are fetched **once, when a note is saved**, and stored on the
+row. A reader's pageview must never trigger an outbound request to someone
+else's server.
 
-What this means when changing things here:
+## Legacy URLs are promises
 
-- **A deploy is for pages and functionality**, not for content. If you
-  find yourself needing one to make a note appear, something has broken.
-- **`pages/field-notes/field-notes.css` is the exception** — hand-owned,
-  still served statically from the build, and therefore the one file in
-  that folder that _does_ cost a deploy to change. It's deliberately
-  absent from both the redirect list and the build-guard ignore list.
-- **`resolveFile` in `notes.mjs` is a security boundary.** That function
-  holds a token that can read the entire private repo, so it serves a
-  strict allowlist and rebuilds the repo path from validated pieces
-  rather than passing request input through. Adding a servable path means
-  adding an explicit case, never loosening the pattern.
-- **The static files stay.** They're what makes this reversible: delete
-  the function and the redirects and the site falls back to build-time
-  serving with no migration. They also keep `git clone` and CI's link
-  checker honest.
+The old site published `/pages/field-notes/field-notes.html` and
+`/pages/field-notes/posts/<slug>.html`. Both permanently redirect to
+`/field-notes` and `/field-notes/<slug>`, via routes under
+`src/pages/pages/`. That directory looks like a mistake and isn't — delete
+it and every link ever shared breaks. The redirects are covered by
+`tests/integration.mjs`.
 
-## Builds are the scarce resource
+## Testing, and why there's so much of it
 
-Netlify build capacity is the real budget on this site, so a commit that
-changes nothing a visitor can see should not spend one. Two rules follow:
+The previous attempt at this feature passed 73 unit tests and was broken in
+production, because nothing had ever served a page. So:
 
-- **Every action is one commit.** Publish, edit and unpublish each touch
-  four or five files and each must land in a single `ghCommit` call, never
-  a sequence of writes. This is also why the functions use the Git Data
-  API — see "One narrow exception" above.
-- **`netlify/should-deploy.mjs` decides whether a build happens at all.**
-  It's wired in as `netlify.toml`'s `ignore` command, and it cancels the
-  build for anything that isn't a production deploy (deploy previews and
-  branch deploys are builds too), for production commits that only touch
-  docs, tests, CI, formatter config, or `.claude/`, and for field note
-  content, which `notes.mjs` serves from git rather than from the build.
-  A publish, an edit and an unpublish therefore cost zero builds.
+- `tests/render.test.mjs` — the pure renderer. Fast, no I/O.
+- `tests/should-deploy.test.mjs` — runs the real build guard against a
+  throwaway git repo.
+- `tests/fake-supabase.mjs` + `tests/integration.mjs` — the real Astro
+  server, real cookie handling, real rendering, against a fake Supabase
+  that enforces the RLS rules the app depends on. It signs in, publishes,
+  reads the HTML back, and checks that a signed-out caller is refused and
+  that an unpublished note actually disappears.
 
-Two things to keep true when changing that script. Netlify reads its exit
-code **backwards** — `0` cancels the build, non-zero proceeds. And it must
-**fail safe**: any uncertainty (no cached commit, a shallow clone, git
-erroring) has to deploy, because a wasted build is a nuisance while
-silently not shipping a post is a bug you'd discover days later. The
-ignore list is a denylist for exactly that reason — a new top-level path
-deploys by default instead of being silently dropped. Its behavior is
-pinned by `tests/should-deploy.test.mjs`, which runs the real script
-against a throwaway git repo.
+The integration test needs a dev server (`npm run dev` in one terminal,
+`node tests/integration.mjs` in another). CI runs both, plus the build, and
+asserts the SSR function was actually emitted. **A green CI that never
+rendered a page is what got us here** — don't remove those steps.
 
-Deploy previews and branch deploys should also be turned off in the
-Netlify UI (Site configuration → Build & deploy → Branches and deploy
-contexts). The script is the backstop, not the only line of defense.
+## Builds are still worth not wasting
+
+`netlify/should-deploy.mjs` is `netlify.toml`'s `ignore` command. It
+cancels the build for anything that isn't a production deploy (deploy
+previews and branch deploys are builds too) and for commits touching only
+docs, tests, CI or formatter config. Netlify reads its exit code
+**backwards**: `0` cancels, non-zero proceeds. It must **fail safe** — any
+uncertainty deploys, because a wasted build is a nuisance and a silently
+unshipped change is a bug found days later.
+
+Field notes are no longer in its ignore list, because they are no longer in
+the repo at all.
 
 ## Low-fi is a style, not an excuse
 
@@ -204,59 +181,54 @@ are `aria-hidden`, and anything that isn't a real destination isn't an
 ## Layout
 
 ```
-index.html          home page — the hand-ordered index of everything
-css/style.css       shared tokens + layout (paper/ink default, phosphor mode)
-js/main.js          home page behavior (static strip, phosphor toggle)
-pages/              one subfolder per piece (html/css/js together); a
-                    single-file piece can skip the subfolder
-pages/field-notes/  the blog: generated listing/posts/feed/sources +
-                    hand-owned CSS
-pages/admin/        unlinked publish/edit/unpublish forms, post to
-                    netlify/functions/
-netlify.toml        Netlify config: publish dir, functions dir, the
-                    build-skip guard, the field-notes rewrites, headers
-netlify/functions/  the one backend piece — see "One narrow exception" above
-netlify/functions/notes.mjs
-                    serves field notes from git per request — see
-                    "Publishing does not require a deploy" above
+public/             the hand-written site, copied to dist/ untouched
+  index.html        home page — the hand-ordered index of everything
+  css/style.css     shared tokens + layout (paper/ink, phosphor mode)
+  js/main.js        home page behavior (static strip, phosphor toggle)
+  pages/            starfield, character-generator — URLs unchanged
+src/
+  lib/render.mjs    plain text -> HTML; pure, unit-tested, pre-dates Astro
+  lib/supabase.js   request-scoped clients + currentAdmin(); no service key
+  lib/notes.js      all reads and writes for notes, in one place
+  layouts/Base.astro
+  components/       the two admin scripts (conditional, so not inline)
+  styles/           field-notes.css (hand-owned), admin.css
+  pages/field-notes/  listing, [slug], feed.xml — all prerender:false
+  pages/admin/      login + desk, gated server-side
+  pages/api/        auth.js, notes.js — JSON endpoints
+  pages/pages/      legacy URL redirects; see "Legacy URLs are promises"
+supabase/
+  schema.sql        tables, RLS policies, is_admin(); run this first
+  seed.sql          the three pre-Supabase notes
+netlify.toml        build command, publish dir, build-skip guard, headers
 netlify/should-deploy.mjs
-                    netlify.toml's `ignore` command — cancels builds that
-                    change nothing served; see "Builds are the scarce
-                    resource" above
+                    netlify.toml's `ignore` command
+tests/              see "Testing" above
 NOTES.md            running review notes: known issues, open items
-.prettierrc.json    formatting; the whole tree complies (see .prettierignore)
-.gitattributes      forces LF checkouts so prettier agrees with CI
-.github/workflows/  CI: format, local links, no-build-step guard
 ```
 
 ## Conventions
 
-- Format before committing:
-  `npx prettier@3.9.6 --write "**/*.{html,css,js,json,md}"`. CI checks the
-  same glob at the same pinned version, so this is always enough to make it
-  pass. The tree is currently fully compliant — keep it that way. The two
-  paths in `.prettierignore` are the sole exception, and why is documented
-  there and in "One narrow exception" above.
+- Format before committing: `npm run format`. CI runs
+  `npm run format:check` on the same glob. Prettier is pinned in
+  `package.json`.
 - Colors go through tokens in `:root`. No hardcoded hex in rules.
 - Canvas work is HiDPI-correct: size the backing store in device pixels,
   and remember `putImageData` ignores the transform matrix (this was a
-  real bug once — see `js/main.js`).
-- New pieces get an `<li class="entry">` in the index; drop
-  `entry--placeholder` once it's real.
+  real bug once — see `public/js/main.js`).
+- New pieces get an `<li class="entry">` in `public/index.html`; drop
+  `entry--placeholder` once it's real. A new static piece goes in
+  `public/pages/` and needs no Astro route.
 - Keep `NOTES.md` honest — mark things fixed when they're fixed.
 
 ## Still open
 
-Hosting now has a concrete answer — Netlify, chosen because it's the one
-of the two documented deploy options (see `README.md`) that can run
-`netlify/functions/publish.mjs` — but it's not yet _connected_: the repo
-still needs to be linked to a Netlify site and its env vars set before
-field notes can actually be published. GitHub Pages remains a valid choice
-if the publish flow doesn't matter to you, since it can still serve every
-static page. A custom domain is separately still unwired.
+`main` has no server-side protection — the repo is private on a free plan,
+so GitHub refuses branch protection and rulesets. Branch-per-change is a
+convention here, not something the remote enforces.
 
-`main` also has no server-side protection — the repo is private on a free
-plan, so GitHub refuses branch protection and rulesets. Branch-per-change
-is a convention here, not something the remote enforces, and the field
-notes publish function is a deliberate, narrow exception to it (see
-above). See the "Repo hygiene" section of `NOTES.md`.
+A custom domain is still unwired. The dependency advisories noted above are
+unresolved. And the rest of the site — the home index, starfield, the
+character generator — is deliberately still hand-written static HTML; the
+decision on whether any of it should become Astro pages was postponed until
+field notes were working.

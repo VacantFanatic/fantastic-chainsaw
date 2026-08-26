@@ -1,222 +1,167 @@
 # STATIC
 
 A personal, hand-built corner of the internet: a small collection of
-interactive pages (art, writing, whatever else) linked from one home
-page, with no framework, no build step, and no algorithm.
+interactive pages (art, writing, whatever else) linked from one home page,
+with no algorithm and no feed.
+
+The hand-written pages are still hand-written pages. The blog — "field
+notes" — is an Astro app backed by Supabase, so that publishing a post
+never requires deploying the site.
 
 ## Structure
 
 ```
 .
-├── index.html          # home page — the "directory listing" of everything else
-├── css/
-│   └── style.css       # shared design tokens + layout (paper/ink + phosphor mode)
-├── js/
-│   └── main.js         # home page behavior (static-strip effect, phosphor toggle)
-├── pages/
-│   ├── starfield/
-│   │   ├── starfield.html            # interactive piece: "a slow drift"
-│   │   └── starfield.js
-│   └── character-generator/
-│       ├── character-generator.html         # interactive piece: "cg–20"
-│       ├── character-generator.css          # page-local palette + panel/sheet layout
-│       ├── character-generator-data.js      # SRD 5.2.1 tables + settings/cartridges
-│       ├── settings/                        # one file per setting, self-registering
-│       │   ├── generic.js                   # (see the comment in character-generator-data.js)
-│       │   ├── forgotten-realms.js
-│       │   ├── greyhawk.js
-│       │   ├── dark-sun.js
-│       │   └── dragonlance.js
-│       ├── character-generator-engine.js    # seeded randomness + buildCharacter()
-│       ├── character-generator-export.js    # plain text / PDF / JSON export
-│       └── character-generator.js           # rendering, state, serial, UI wiring
-│   ├── field-notes/
-│   │   ├── field-notes.html    # generated listing — do not hand-edit
-│   │   ├── field-notes.css     # hand-owned styling, never touched by the functions
-│   │   ├── posts.json          # generated manifest — do not hand-edit
-│   │   ├── feed.xml            # generated RSS 2.0 feed — do not hand-edit
-│   │   ├── posts/*.html        # generated post pages — do not hand-edit
-│   │   └── sources/*.txt       # each note's plain text, saved so it can be
-│   │                            # edited later — do not hand-edit
-│   └── admin/
-│       └── admin.html  # unlinked publish / edit / unpublish forms
-├── netlify/
-│   ├── functions/              # the one backend piece — see CLAUDE.md
-│   │   ├── publish.mjs         # /api/publish — renderers + GitHub plumbing
-│   │   ├── edit.mjs            # /api/edit — revise a note, same slug and date
-│   │   ├── unpublish.mjs       # /api/unpublish — take a note back down
-│   │   └── notes.mjs           # serves field notes from git, no deploy needed
-│   └── should-deploy.mjs       # cancels builds that change nothing served
+├── public/                 # copied into dist/ byte for byte
+│   ├── index.html          # home page — the "directory listing"
+│   ├── css/style.css       # shared design tokens (paper/ink + phosphor)
+│   ├── js/main.js          # home page behaviour
+│   └── pages/
+│       ├── starfield/      # interactive piece: "a slow drift"
+│       └── character-generator/   # interactive piece: "cg–20"
+├── src/
+│   ├── lib/
+│   │   ├── render.mjs      # plain text -> HTML. Pure, unit-tested.
+│   │   ├── supabase.js     # request-scoped clients; no service-role key
+│   │   └── notes.js        # every read and write for notes
+│   ├── layouts/Base.astro
+│   ├── components/         # the two /admin scripts
+│   ├── styles/             # field-notes.css, admin.css
+│   └── pages/
+│       ├── field-notes/    # listing, [slug], feed.xml (server-rendered)
+│       ├── admin/          # sign in + publish/edit/unpublish
+│       ├── api/            # auth.js, notes.js — JSON endpoints
+│       └── pages/          # permanent redirects for the old URLs
+├── supabase/
+│   ├── schema.sql          # tables + row-level security. Run first.
+│   └── seed.sql            # the three notes that predate Supabase
 ├── tests/
-│   ├── publish.test.mjs        # zero-dep unit tests, `node --test`, kept
-│   ├── edit.test.mjs           # out of netlify/functions/ so Netlify
-│   ├── unpublish.test.mjs      # doesn't try to deploy them as functions
-│   ├── notes.test.mjs          # what the serving function may and may not serve
-│   └── should-deploy.test.mjs  # runs the build guard against a temp repo
-├── netlify.toml         # publish dir, functions dir, the build-skip guard,
-│                         # the field-notes rewrites, feed.xml content-type
-├── .prettierrc.json     # formatting rules
-├── .prettierignore      # exempts the two publish-generated HTML shapes
-└── README.md
+│   ├── render.test.mjs     # the renderer
+│   ├── should-deploy.test.mjs   # build guard, against a temp git repo
+│   ├── fake-supabase.mjs   # test double: enough GoTrue + PostgREST
+│   └── integration.mjs     # the real server, end to end
+├── netlify.toml
+├── netlify/should-deploy.mjs
+└── astro.config.mjs
+```
+
+## Setup
+
+### 1. Supabase
+
+Create a project at supabase.com, then in the SQL editor:
+
+1. Run `supabase/schema.sql` — creates the tables and the row-level
+   security policies.
+2. Run `supabase/seed.sql` — loads the three existing notes. Optional, and
+   safe to run twice.
+
+Create your user under **Authentication → Users → Add user**, then grant it
+admin rights:
+
+```sql
+insert into public.admins (user_id, email)
+select id, email from auth.users where email = 'you@example.com';
+```
+
+Then turn public signups off: **Authentication → Sign In / Providers →
+Email → disable "Allow new users to sign up"**.
+
+Being a Supabase user grants nothing on its own — write access comes only
+from a row in `admins` — but there is no reason to let strangers create
+accounts.
+
+### 2. Environment variables
+
+Locally, copy `.env.example` to `.env`. On Netlify, set them under **Site
+configuration → Environment variables**:
+
+| variable                   | where it comes from                       |
+| -------------------------- | ----------------------------------------- |
+| `PUBLIC_SUPABASE_URL`      | Project Settings → API                    |
+| `PUBLIC_SUPABASE_ANON_KEY` | Project Settings → API (the **anon** key) |
+
+Both are public by design. The anon key is limited by row-level security to
+reading published notes; it cannot write. **Do not add a service-role key**
+— nothing here uses one, and adding one would undo the security model.
+
+`SITE_URL` is only for local runs; Netlify injects its own `URL`.
+
+### 3. Deploy
+
+Connect the repo at netlify.com. `netlify.toml` already declares the build
+command, the publish directory and the build-skip guard, so there is
+nothing else to configure.
+
+GitHub Pages is no longer an option for the whole site — it can't run the
+server-rendered field notes routes. The hand-written pages under `public/`
+would still work there.
+
+## Running it
+
+```bash
+npm install
+npm run dev
+```
+
+Then open http://localhost:4321. `npm run build` produces `dist/` plus the
+SSR function; `npm test` runs the unit tests.
+
+The end-to-end test needs the dev server running:
+
+```bash
+node tests/integration.mjs
+```
+
+It starts a fake Supabase, signs in, publishes, edits, unpublishes, and
+reads the rendered HTML back — no account or network needed.
+
+## Writing, revising and removing notes
+
+Everything happens at `/admin`, which is `noindex` and not linked from
+anywhere public. Sign in with the email and password you created above.
+
+- **Publish** — a title and plain text. A blank line starts a paragraph,
+  and a link on a line by itself becomes a preview card, fetched once at
+  save time and stored with the note.
+- **Edit** — pick a note; its title and text load into the form. The URL
+  and the publication date stay put: an edit revises a note, it doesn't
+  republish it.
+- **Publish status** — unpublishing turns a note into a draft. It leaves
+  the listing, the feed and the site, but nothing is deleted and you can
+  put it back from the same form.
+
+None of these deploy the site. A note is live the moment it's saved.
+
+## Deploys
+
+A deploy is for pages and functionality, never for content.
+`netlify/should-deploy.mjs` runs as Netlify's `ignore` command and cancels
+builds for deploy previews, branch deploys, and commits that only touch
+docs, tests, CI or formatter config. Anything ambiguous deploys — failing
+safe means a wasted build, never a change that silently doesn't ship.
+
+Also worth turning previews off in the dashboard (Site configuration →
+Build & deploy → Branches and deploy contexts); the script is a backstop,
+the setting stops the build being queued at all.
+
+If you are ever out of build capacity and need to ship anyway, the Netlify
+CLI uploads a prebuilt directory without running a build in Netlify's CI:
+
+```bash
+npm run build && npx netlify-cli deploy --prod --dir=dist
 ```
 
 ## Adding a new page
 
-1. Create `pages/your-page/your-page.html` (copy `starfield/` as a
-   starting point if it's interactive, or just write plain HTML for a
-   blog post). A page with only one file can skip the subfolder.
-2. Link to `../../css/style.css` for the shared look, or write scoped
-   `<style>` for anything page-specific. A piece big enough to need it
-   can bring its own stylesheet next to it (see `character-generator.css`).
-3. Add an `<li class="entry">` to the list in `index.html` pointing at
-   it, and remove the `entry--placeholder` class once it's real.
-4. Format before committing:
-   ```
-   npx prettier@3.9.6 --write "**/*.{html,css,js,json,md}"
-   ```
-   CI runs the same command with `--check`, pinned to the same version,
-   so running this is always enough to make it pass.
+A static piece needs no Astro route — drop it in `public/pages/your-page/`
+and it is served at that path verbatim. Link to `/css/style.css` for the
+shared look, or write scoped `<style>`. Add an `<li class="entry">` to
+`public/index.html` and remove `entry--placeholder` once it's real.
 
-## Local preview
-
-No build step — just open `index.html` in a browser, or serve the
-folder locally:
-
-```
-npx serve .
-```
-
-## Deploying
-
-Pick one (both are free for a static site like this):
-
-- **GitHub Pages** — push this folder to a GitHub repo, then enable
-  Pages in the repo settings (Settings → Pages → deploy from branch).
-  Serves every page fine, but GitHub Pages can't run serverless
-  functions, so **field notes publishing won't work** — you'd be back to
-  hand-writing and committing post files yourself.
-- **Netlify** — connect the repo at netlify.com. Required if you want
-  live publishing, since `netlify/functions/` needs it. `netlify.toml`
-  already declares the publish directory and functions directory, so
-  connecting the repo is enough — no other Netlify config to write.
-
-### Publishing setup (Netlify only)
-
-Set these as environment variables on the Netlify site (Site settings →
-Environment variables) before using `pages/admin/admin.html`:
-
-- `PUBLISH_SECRET` — a long, random string. Typed into the admin page's
-  password field on every publish, edit and unpublish; never stored in
-  the browser.
-- `GITHUB_TOKEN` — a GitHub fine-grained personal access token, scoped to
-  **just this repo**, with Contents: Read and write permission.
-- `GITHUB_REPOSITORY` — `owner/repo`, e.g. `your-username/your-repo-name`.
-
-`URL` (the site's own address, used for absolute RSS links) is injected
-automatically by Netlify — nothing to set.
-
-### Writing, revising, and removing notes
-
-All three live on `pages/admin/admin.html`, which is deliberately not
-linked from anywhere public:
-
-- **Publish** — a title and plain text; a blank line starts a paragraph,
-  and a link on a line by itself becomes a preview card.
-- **Edit** — pick a note, and its title and original text load into the
-  form. Saving re-renders the page, but the URL and the publication date
-  stay put; an edit revises a note, it doesn't republish it. Notes
-  written before `sources/` existed have no saved text, and the form
-  says so rather than letting you blank the post by accident.
-- **Unpublish** — pick a note and confirm. It's removed from the
-  listing, the feed, and the site. The commit that created it is still
-  in git history, so nothing is truly lost — but the live page is gone.
-
-Each action is exactly **one commit** on `main`. That's why the functions
-use the Git Data API rather than the simpler Contents API, which can only
-write one file per commit.
-
-### Publishing never triggers a deploy
-
-Netlify build capacity is a hard budget — run out and the site can't be
-deployed at all until it resets. A blog that can't publish because the
-host is out of build minutes isn't much of a blog, so publishing is
-deliberately kept off the deploy path entirely.
-
-Field notes are served **from git at request time** by
-`netlify/functions/notes.mjs`. Publishing commits real HTML to `main` as
-it always did; the function fetches the committed file when a reader asks
-for it. A note is live within about 30 seconds of the commit, and no
-build runs. `netlify.toml` routes five paths to it:
-
-| path                                         | served by                    |
-| -------------------------------------------- | ---------------------------- |
-| `field-notes.html`, `posts.json`, `feed.xml` | the function, from git       |
-| `posts/<slug>.html`, `sources/<slug>.txt`    | the function, from git       |
-| `field-notes.css`                            | the CDN, from the last build |
-
-Responses carry a 30-second cache and pass GitHub's `ETag` through, so a
-busy day doesn't become one API call per pageview.
-
-**Deploys are for pages and functionality.** If you ever need one to make
-a note appear, something has broken.
-
-The static files stay in the repo and stay real — a clone still works
-offline, CI still link-checks them, and deleting the function and its
-redirects falls straight back to build-time serving with no migration.
-
-### What still spends a build
-
-`netlify.toml` runs `netlify/should-deploy.mjs` as its `ignore` command,
-which cancels the build for:
-
-- anything that isn't a **production** deploy — deploy previews and
-  branch deploys are builds too, and branch-per-change means they add up
-  fast;
-- field note content, now that the function serves it;
-- production commits touching only docs, `tests/`, `.github/`, formatter
-  config, or `.claude/`.
-
-Anything else deploys, and so does anything ambiguous — a missing cached
-commit, a shallow clone, a git error. Failing safe means a wasted build,
-never a change that silently doesn't ship.
-
-Also turn off previews in the dashboard (Site configuration → Build &
-deploy → Branches and deploy contexts → set deploy previews and branch
-deploys to none). The script is a backstop; the setting stops the build
-being queued in the first place.
-
-### Deploying without spending build minutes
-
-If you're out of build capacity and need to ship a change anyway, the
-Netlify CLI can upload a prebuilt directory instead of running a build in
-Netlify's CI:
-
-```
-npx netlify-cli deploy --prod --dir=.
-```
-
-There's no build step here to skip, so this uploads the same files the CI
-build would have. Dev-only tooling invoked with `npx`, same standing as
-Prettier — nothing gets installed into the repo.
-
-## Domain
-
-Buy a domain (Cloudflare Registrar or Namecheap are both
-straightforward, at-cost options), then point it at whichever host you
-chose:
-
-- GitHub Pages: add a `CNAME` file with your domain, and set the DNS
-  A/ALIAS records per GitHub's Pages docs.
-- Netlify: add the domain in the site's Domain settings; Netlify walks
-  you through the DNS records.
+Format before committing with `npm run format`; CI checks the same glob.
 
 ## Design notes
 
-- Palette: warm paper (`--paper`) and ink (`--ink`) by default, with a
-  rust accent and a muted mint hover state. A "phosphor mode" toggle
-  flips the whole page to a green-on-black terminal look.
-- Type: `Space Mono` for structure (headers, labels, nav) paired with
-  `Lora` for anything meant to be read at length.
-- The static-strip canvas at the top of the home page and the
-  cursor-reactive starfield are the two signature touches — deliberately
-  kept to those two spots rather than scattered everywhere.
+See `CLAUDE.md` for what this site is trying to be and which constraints
+are deliberate, and `NOTES.md` for the running list of known issues.

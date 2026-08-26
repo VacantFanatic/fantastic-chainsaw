@@ -1,0 +1,60 @@
+---
+// The listing. Server-rendered so a note appears the moment it's saved --
+// no build, no cache to bust, nothing to redeploy.
+export const prerender = false;
+
+import Base from "../../layouts/Base.astro";
+import { supabaseFor, isConfigured } from "../../lib/supabase.js";
+import { listPublished } from "../../lib/notes.js";
+import { humanDate } from "../../lib/render.mjs";
+
+let notes = [];
+let broken = null;
+
+if (!isConfigured()) {
+  broken = "field notes aren't configured yet.";
+} else {
+  try {
+    notes = await listPublished(supabaseFor(Astro.cookies, Astro.request.url));
+  } catch (error) {
+    broken = "field notes are having a moment. try again shortly.";
+    console.error("[field-notes] listing failed:", error);
+  }
+}
+
+const count = notes.length;
+---
+
+<Base title="field notes — STATIC">
+  <p class="back-link"><a href="/index.html">&larr; back to index</a></p>
+  <main class="directory">
+    <p class="directory__label">index of /field-notes/</p>
+    {broken && <p class="field-notes__empty">{broken}</p>}
+    {
+      !broken && count === 0 && (
+        <p class="field-notes__empty">nothing published yet.</p>
+      )
+    }
+    {
+      count > 0 && (
+        <ol class="directory__list">
+          {notes.map((note, i) => (
+            <li class="entry">
+              <a class="entry__link" href={`/field-notes/${note.slug}`}>
+                <span class="entry__num">
+                  {String(count - i).padStart(2, "0")}
+                </span>
+                <span class="entry__name">{note.title}</span>
+                <span class="entry__kind">
+                  [note / {humanDate(note.published_at)}]
+                </span>
+              </a>
+              <p class="entry__note">{note.excerpt}</p>
+            </li>
+          ))}
+        </ol>
+      )
+    }
+    <p class="field-notes__feed"><a href="/field-notes/feed.xml">RSS</a></p>
+  </main>
+</Base>
