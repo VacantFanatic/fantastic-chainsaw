@@ -9,6 +9,23 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 const GITHUB_API = "https://api.github.com";
 
+// A standalone link (a paragraph that's nothing but a URL) gets a preview
+// card fetched at publish time and baked into the static page -- never
+// fetched client-side, so the reading experience stays fully static with
+// no CORS proxy and no runtime dependency for visitors. These limits keep
+// a post with many links from blowing past the function's execution
+// budget: fetched in parallel, so worst case is one timeout, not the sum.
+const MAX_LINK_PREVIEWS = 5;
+const LINK_FETCH_TIMEOUT_MS = 6000;
+const MAX_PREVIEW_HTML_BYTES = 300000;
+
+// Basic hygiene, not a hardened SSRF defense -- the input source is the
+// site owner's own trusted admin form, not public traffic, but there's no
+// reason to let a pasted link make the function fetch its own private
+// network.
+const PRIVATE_HOST_RE =
+  /^(localhost|127\.|0\.0\.0\.0|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?)/i;
+
 const MONTHS = [
   "January",
   "February",
@@ -91,12 +108,96 @@ export function cdata(s) {
   return `<![CDATA[${s.replace(/]]>/g, "]]]]><![CDATA[>")}]]>`;
 }
 
-export function renderBody(raw) {
+// A paragraph that's exactly one bare URL, and nothing else -- the same
+// "link on its own line unfurls" convention Slack/Discord/Twitter use. A
+// URL inside a sentence is auto-linked (see linkify below) but doesn't
+// get a card, so cards don't litter the middle of a paragraph.
+const STANDALONE_URL_RE = /^https?:\/\/\S+$/i;
+
+// Deliberately excludes trailing sentence punctuation from the match, so
+// "check this out: https://example.com." doesn't swallow the period into
+// the URL.
+const INLINE_URL_RE = /https?:\/\/[^\s<]+[^\s<.,;:!?)\]}'"]/g;
+
+export function extractStandaloneLinks(rawBody) {
+  const paragraphs = rawBody
+    .split(/\n\s*\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const links = [];
+  const seen = new Set();
+  for (const para of paragraphs) {
+    if (STANDALONE_URL_RE.test(para) && !seen.has(para)) {
+      seen.add(para);
+      links.push(para);
+    }
+  }
+  return links.slice(0, MAX_LINK_PREVIEWS);
+}
+
+// Applied to already-escaped text: escaping first means there's no
+// markup yet for the regex to accidentally cross into, and HTML entities
+// like &amp; are valid (and correctly decode back to &) both inside an
+// href and inside displayed text, so the same escaped substring works in
+// both places.
+function linkify(escapedText) {
+  return escapedText.replace(
+    INLINE_URL_RE,
+    (match) => `<a href="${match}">${match}</a>`,
+  );
+}
+
+function hostnameOf(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return url;
+  }
+}
+
+function renderLinkCard(url, preview) {
+  const safeUrl = escapeHtml(url);
+  const domain = escapeHtml(hostnameOf(url));
+
+  if (!preview) {
+    // No usable preview (fetch failed, timed out, blocked, or the page
+    // had no title) -- still a box, per the design, just a minimal one
+    // rather than silently falling back to a plain paragraph.
+    return `<a class="link-card link-card--plain" href="${safeUrl}">
+        <span class="link-card__domain">${domain} &rarr;</span>
+      </a>`;
+  }
+
+  const image = preview.image
+    ? `<img class="link-card__image" src="${escapeHtml(preview.image)}" alt="" loading="lazy" />`
+    : "";
+  const description = preview.description
+    ? `<span class="link-card__description">${escapeHtml(preview.description)}</span>`
+    : "";
+
+  return `<a class="link-card" href="${safeUrl}">
+        ${image}
+        <span class="link-card__body">
+          <span class="link-card__title">${escapeHtml(preview.title)}</span>
+          ${description}
+          <span class="link-card__domain">${domain}</span>
+        </span>
+      </a>`;
+}
+
+export function renderBody(raw, previews = new Map()) {
   return raw
     .split(/\n\s*\n+/)
     .map((s) => s.trim())
     .filter(Boolean)
-    .map((para) => `<p>${escapeHtml(para).replace(/\n/g, "<br />\n")}</p>`)
+    .map((para) => {
+      if (STANDALONE_URL_RE.test(para)) {
+        return renderLinkCard(para, previews.get(para));
+      }
+      const escaped = escapeHtml(para).replace(/\n/g, "<br />\n");
+      return `<p>${linkify(escaped)}</p>`;
+    })
     .join("\n");
 }
 
@@ -122,7 +223,151 @@ export function makeExcerpt(body) {
   return `${cut.slice(0, lastSpace > 0 ? lastSpace : 160)}…`;
 }
 
-export function renderPostPage(post, rawBody) {
+function decodeHtmlEntities(s) {
+  return s
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'");
+}
+
+function metaContent(html, patterns) {
+  for (const re of patterns) {
+    const m = html.match(re);
+    if (m && m[1]) return decodeHtmlEntities(m[1].trim());
+  }
+  return "";
+}
+
+// Regex, not a real HTML parser -- pulling four meta tags out of a <head>
+// doesn't need one, and adding one would mean an npm dependency for the
+// one piece of the site that's supposed to have none.
+export function parseOgTags(html, baseUrl) {
+  const head = html.match(/<head[^>]*>([\s\S]*?)<\/head>/i)?.[1] ?? html;
+
+  const ogTitle = metaContent(head, [
+    /<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']*)["']/i,
+    /<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:title["']/i,
+  ]);
+  const title = ogTitle || metaContent(head, [/<title[^>]*>([^<]*)<\/title>/i]);
+  if (!title) return null;
+
+  const description = metaContent(head, [
+    /<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']*)["']/i,
+    /<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:description["']/i,
+    /<meta[^>]+name=["']description["'][^>]+content=["']([^"']*)["']/i,
+    /<meta[^>]+content=["']([^"']*)["'][^>]+name=["']description["']/i,
+  ]);
+
+  const ogImage = metaContent(head, [
+    /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']*)["']/i,
+    /<meta[^>]+content=["']([^"']*)["'][^>]+property=["']og:image["']/i,
+  ]);
+  let image = "";
+  if (ogImage) {
+    try {
+      image = new URL(ogImage, baseUrl).href;
+    } catch {
+      image = "";
+    }
+  }
+
+  return {
+    url: baseUrl,
+    title: title.slice(0, 200),
+    description: description.slice(0, 300),
+    image,
+  };
+}
+
+export function isFetchableUrl(rawUrl) {
+  let u;
+  try {
+    u = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  return (
+    (u.protocol === "http:" || u.protocol === "https:") &&
+    !PRIVATE_HOST_RE.test(u.hostname)
+  );
+}
+
+async function readCapped(res, maxBytes) {
+  const reader = res.body.getReader();
+  const chunks = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > maxBytes) {
+      chunks.push(value.subarray(0, value.length - (total - maxBytes)));
+      await reader.cancel();
+      break;
+    }
+    chunks.push(value);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+// The only impure piece of the link-preview pipeline -- everything it
+// hands off to (parseOgTags) is pure and unit-tested with fixture HTML.
+// Never throws: any failure (bad URL, private host, timeout, non-HTML
+// response, no usable title) becomes null, which renderLinkCard renders
+// as a minimal fallback box rather than aborting the publish.
+export async function fetchLinkPreview(url) {
+  if (!isFetchableUrl(url)) return null;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LINK_FETCH_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: {
+        // An honest bot UA, not a spoofed browser one -- og: tags exist
+        // specifically for link-unfurling bots (Slack, Twitter, Discord
+        // all identify themselves the same way).
+        "User-Agent": "STATICFieldNotesBot/1.0 (+link preview)",
+        Accept: "text/html,application/xhtml+xml",
+      },
+    });
+    if (!res.ok) return null;
+    if (!(res.headers.get("content-type") || "").includes("html")) {
+      return null;
+    }
+
+    const html = await readCapped(res, MAX_PREVIEW_HTML_BYTES);
+    return parseOgTags(html, res.url || url);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Fetches previews for every standalone link in parallel and returns a
+// Map keyed by the raw URL text, so renderBody can look each one up by
+// the same string it split the paragraph on. Parallel rather than
+// sequential so the worst case is one timeout, not the sum of all of
+// them -- serverless functions have an execution budget.
+async function fetchLinkPreviews(links) {
+  const previews = new Map();
+  if (links.length === 0) return previews;
+
+  const results = await Promise.allSettled(links.map(fetchLinkPreview));
+  links.forEach((url, i) => {
+    const result = results[i];
+    previews.set(url, result.status === "fulfilled" ? result.value : null);
+  });
+  return previews;
+}
+
+export function renderPostPage(post, rawBody, previews = new Map()) {
   const title = escapeHtml(post.title);
   return `<!doctype html>
 <html lang="en">
@@ -153,7 +398,7 @@ export function renderPostPage(post, rawBody) {
       <p class="note__date">${humanDate(post.date)}</p>
       <h1 class="note__title">${title}</h1>
       <div class="note__body">
-${renderBody(rawBody)}
+${renderBody(rawBody, previews)}
       </div>
     </main>
   </body>
@@ -373,6 +618,8 @@ export default async (req) => {
       excerpt: makeExcerpt(body),
     };
 
+    const previews = await fetchLinkPreviews(extractStandaloneLinks(body));
+
     // Committed in this order on purpose: the GitHub Contents API has no
     // atomic multi-file commit, so a mid-sequence failure is an accepted
     // tradeoff. This order means the worst case is an orphan post page
@@ -381,7 +628,7 @@ export default async (req) => {
     await ghPutFile(
       repo,
       `pages/field-notes/posts/${slug}.html`,
-      renderPostPage(post, body),
+      renderPostPage(post, body, previews),
       `field notes: add "${title}"`,
     );
 

@@ -850,3 +850,58 @@ needs a live Netlify site connected to this repo with real env vars set
 (`PUBLISH_SECRET`, `GITHUB_TOKEN`, `GITHUB_REPOSITORY`) — see the
 "Publishing setup" section of `README.md`. Everything checkable without
 that (templates, escaping, the CI checks, the unit tests) has been.
+
+## Field notes: link preview cards
+
+Added 2026-08-26. A paragraph that's nothing but a URL now unfurls into a
+preview card (title, description, thumbnail, domain) instead of sitting
+there as plain text — the familiar Slack/Discord/Twitter "paste a link on
+its own line" convention. A URL inside a sentence is auto-linked but
+doesn't get a card, so cards don't litter the middle of a paragraph.
+
+- **Fetched and baked in at publish time, not read time.** The function
+  fetches each linked page's `og:title`/`og:description`/`og:image` (or
+  falls back to `<title>`/`<meta name="description">`) once, when the
+  post is published, and writes the result straight into the post's
+  static HTML. Nothing fetches on a visitor's behalf — no CORS proxy, no
+  client-side dependency, no per-pageview cost. Same reasoning as
+  everything else about this feature: the function does by API what a
+  human would otherwise do by hand, once, and the result is ordinary
+  static HTML forever after.
+- **Regex, not an HTML parser**, for pulling four meta tags out of a
+  `<head>`. A real parser would mean an npm dependency for the one part
+  of the site that's supposed to have none, and four tags don't need one.
+- **A failed fetch still renders a box, just a minimal one** — domain and
+  a bare link, no title/description/image — rather than silently
+  reverting to a plain paragraph. Whether a link becomes a preview or a
+  fallback, "a link on its own line is a box" holds either way.
+- **Fetched in parallel, capped at 5 per post, 6-second timeout each,
+  300KB of HTML read per fetch.** Parallel so the worst case is one
+  timeout, not the sum of five; capped so a post with many links can't
+  blow past the function's execution budget. None of this ever aborts
+  the publish itself — `fetchLinkPreview` catches its own failures and
+  returns `null`, which is exactly the fallback-box path.
+- **Basic SSRF hygiene, not a hardened defense.** Non-http(s) schemes and
+  a short list of localhost/private-IP-shaped hostnames are refused
+  before fetching. This is proportionate, not bulletproof (no DNS-level
+  check, so rebinding isn't covered) — the input source is the site
+  owner's own trusted admin form, not public traffic, so the bar is
+  "don't let a pasted link reach the function's own private network by
+  accident," not "defend against a malicious author."
+- **`--mint` almost became a hover text color and got caught.** The first
+  pass of the inline-link styling switched to `--mint` on hover, which is
+  2.59:1 on `--paper` — the same token NOTES.md already flagged as
+  border-only, for the same reason `--phosphor-dim`/`--phosphor-line`
+  are split. Fixed before it shipped: color stays on `--rust` in both
+  states, the hover affordance is a thicker underline instead. Worth
+  recording since it's exactly the mistake the split-token rule in
+  `CLAUDE.md` exists to prevent, caught by re-reading that rule rather
+  than by a contrast checker.
+- **Verified with a local HTTP server, not just fixtures.** Redirect
+  following, `res.url` reflecting the post-redirect address (for
+  resolving a relative `og:image` correctly), 404 handling, non-HTML
+  `content-type` rejection, and the byte-cap truncation were all
+  exercised against a real (local, offline) server rather than asserted
+  from reading the code — the byte cap in particular was confirmed to
+  actually bound the read (requested 1000 bytes from a 1MB response, got
+  exactly 1000 back) rather than being decorative.

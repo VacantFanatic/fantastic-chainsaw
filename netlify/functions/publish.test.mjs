@@ -18,6 +18,9 @@ import {
   renderPostPage,
   renderListingPage,
   renderFeed,
+  extractStandaloneLinks,
+  parseOgTags,
+  isFetchableUrl,
 } from "./publish.mjs";
 
 test("slugify: lowercases, strips punctuation, collapses to dashes", () => {
@@ -180,4 +183,144 @@ test("renderFeed: zero posts still produces valid channel markup", () => {
   assert.ok(xml.startsWith('<?xml version="1.0" encoding="UTF-8"?>'));
   assert.ok(xml.includes("<channel>"));
   assert.ok(!xml.includes("<item>"));
+});
+
+/* ---------------------------------------------------------
+   Link previews
+   --------------------------------------------------------- */
+
+test("extractStandaloneLinks: finds paragraphs that are exactly one URL", () => {
+  const body =
+    "intro\n\nhttps://example.com/a\n\nmiddle with an inline https://x.example.com link\n\nhttps://example.com/b";
+  assert.deepEqual(extractStandaloneLinks(body), [
+    "https://example.com/a",
+    "https://example.com/b",
+  ]);
+});
+
+test("extractStandaloneLinks: dedupes repeated links", () => {
+  const body = "https://example.com/a\n\nhttps://example.com/a";
+  assert.deepEqual(extractStandaloneLinks(body), ["https://example.com/a"]);
+});
+
+test("extractStandaloneLinks: caps at 5", () => {
+  const body = Array.from(
+    { length: 8 },
+    (_, i) => `https://example.com/${i}`,
+  ).join("\n\n");
+  assert.equal(extractStandaloneLinks(body).length, 5);
+});
+
+test("extractStandaloneLinks: ignores non-URL paragraphs and inline URLs", () => {
+  const body = "just text\n\nhttps://example.com/a and more text";
+  assert.deepEqual(extractStandaloneLinks(body), []);
+});
+
+test("isFetchableUrl: accepts http/https, rejects other schemes", () => {
+  assert.equal(isFetchableUrl("https://example.com"), true);
+  assert.equal(isFetchableUrl("http://example.com"), true);
+  assert.equal(isFetchableUrl("ftp://example.com"), false);
+  assert.equal(isFetchableUrl("javascript:alert(1)"), false);
+  assert.equal(isFetchableUrl("not a url"), false);
+});
+
+test("isFetchableUrl: rejects localhost and private IP ranges", () => {
+  assert.equal(isFetchableUrl("http://localhost:3000"), false);
+  assert.equal(isFetchableUrl("http://127.0.0.1"), false);
+  assert.equal(isFetchableUrl("http://10.0.0.5"), false);
+  assert.equal(isFetchableUrl("http://192.168.1.1"), false);
+  assert.equal(isFetchableUrl("http://172.16.0.1"), false);
+  assert.equal(isFetchableUrl("http://172.31.255.255"), false);
+  assert.equal(isFetchableUrl("http://172.32.0.1"), true); // just outside the private range
+});
+
+test("parseOgTags: prefers og:title/og:description/og:image, decodes entities", () => {
+  const html = `<html><head>
+    <title>Fallback Title</title>
+    <meta property="og:title" content="A Great Article &amp; Things" />
+    <meta property="og:description" content="Some description." />
+    <meta property="og:image" content="/img/thumb.png" />
+  </head></html>`;
+  const result = parseOgTags(html, "https://example.com/post");
+  assert.equal(result.title, "A Great Article & Things");
+  assert.equal(result.description, "Some description.");
+  assert.equal(result.image, "https://example.com/img/thumb.png");
+});
+
+test("parseOgTags: falls back to <title> when there's no og:title", () => {
+  const html = "<html><head><title>Just A Title</title></head></html>";
+  const result = parseOgTags(html, "https://example.com/x");
+  assert.equal(result.title, "Just A Title");
+  assert.equal(result.description, "");
+  assert.equal(result.image, "");
+});
+
+test("parseOgTags: returns null when there's no usable title at all", () => {
+  assert.equal(
+    parseOgTags("<html><head></head></html>", "https://x.com"),
+    null,
+  );
+});
+
+test("parseOgTags: resolves an absolute og:image unchanged", () => {
+  const html = `<meta property="og:image" content="https://cdn.example.com/a.png" /><title>T</title>`;
+  const result = parseOgTags(html, "https://example.com/post");
+  assert.equal(result.image, "https://cdn.example.com/a.png");
+});
+
+test("renderBody: standalone link with a preview renders a full card", () => {
+  const previews = new Map([
+    [
+      "https://example.com/a",
+      {
+        title: "A Title",
+        description: "A description",
+        image: "https://example.com/thumb.png",
+      },
+    ],
+  ]);
+  const html = renderBody("https://example.com/a", previews);
+  assert.ok(html.includes('class="link-card"'));
+  assert.ok(html.includes("A Title"));
+  assert.ok(html.includes("A description"));
+  assert.ok(html.includes('src="https://example.com/thumb.png"'));
+  assert.ok(html.includes("example.com"));
+});
+
+test("renderBody: standalone link with no preview renders the plain fallback card", () => {
+  const previews = new Map([["https://example.com/a", null]]);
+  const html = renderBody("https://example.com/a", previews);
+  assert.ok(html.includes('class="link-card link-card--plain"'));
+  assert.ok(!html.includes("link-card__title"));
+});
+
+test("renderBody: standalone link missing from the previews map also falls back", () => {
+  const html = renderBody("https://example.com/a", new Map());
+  assert.ok(html.includes('class="link-card link-card--plain"'));
+});
+
+test("renderBody: a URL inline within a sentence is auto-linked, not carded", () => {
+  const html = renderBody("check this out https://example.com/a for real");
+  assert.ok(
+    html.includes('<a href="https://example.com/a">https://example.com/a</a>'),
+  );
+  assert.ok(!html.includes("link-card"));
+});
+
+test("renderBody: inline URL is escaped and excludes trailing punctuation", () => {
+  const html = renderBody("see https://example.com/a?x=1&y=2.");
+  assert.ok(html.includes('href="https://example.com/a?x=1&amp;y=2"'));
+  assert.ok(html.endsWith(".</p>"));
+});
+
+test("renderBody: card content is HTML-escaped", () => {
+  const previews = new Map([
+    [
+      "https://example.com/a",
+      { title: "<script>alert(1)</script>", description: "", image: "" },
+    ],
+  ]);
+  const html = renderBody("https://example.com/a", previews);
+  assert.ok(html.includes("&lt;script&gt;alert(1)&lt;/script&gt;"));
+  assert.ok(!html.includes("<script>"));
 });
