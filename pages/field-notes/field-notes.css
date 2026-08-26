@@ -1,0 +1,131 @@
+/* Page-scoped styling for the field notes listing and every post page.
+   Never touched by netlify/functions/publish.mjs -- the generated HTML
+   only ever links to this file, it doesn't write to it. See CLAUDE.md. */
+
+.back-link {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  margin: 0;
+  padding: 1.5rem 2rem 0;
+  color: var(--rust);
+}
+
+body.phosphor .back-link {
+  color: var(--phosphor-fg);
+}
+
+.back-link a {
+  color: inherit;
+}
+
+.back-link a:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.field-notes__empty {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+body.phosphor .field-notes__empty {
+  color: var(--phosphor-dim);
+}
+
+.field-notes__feed {
+  margin-top: 2rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+}
+
+.field-notes__feed a {
+  color: var(--rust);
+}
+
+body.phosphor .field-notes__feed a {
+  color: var(--phosphor-fg);
+}
+
+.field-notes__feed a:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------
+   Individual post page
+   --------------------------------------------------------- */
+.note {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1rem 2rem 4rem;
+}
+
+.note__nav {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--rust);
+  margin: 0.5rem 0 2rem;
+}
+
+body.phosphor .note__nav {
+  color: var(--phosphor-fg);
+}
+
+.note__nav a {
+  color: inherit;
+}
+
+.note__nav a:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.note__date {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  margin: 0 0 0.5rem;
+}
+
+body.phosphor .note__date {
+  color: var(--phosphor-dim);
+}
+
+.note__title {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(1.75rem, 5vw, 2.5rem);
+  line-height: 1.15;
+  margin: 0 0 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px dashed var(--line);
+}
+
+body.phosphor .note__title {
+  border-bottom-color: var(--phosphor-line);
+}
+
+.note__body {
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.note__body p {
+  margin: 0 0 1.3em;
+}
+
+.note__body p:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 40rem) {
+  .back-link {
+    padding: 1rem 1.25rem 0;
+  }
+
+  .note {
+    padding: 1rem 1.25rem 3rem;
+  }
+}

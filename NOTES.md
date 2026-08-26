@@ -769,3 +769,84 @@ does on the medieval unit.
   race/setting pairs -- zero build errors, and the actual generated
   names read distinctly on inspection (Dark Sun halfling: Thickettooth,
   Snarefang, Sharpbite; Greyhawk elf: Greyfall, Autumnspire, Frostvale).
+
+## New piece: field notes
+
+Added 2026-08-26 as entry `03` in the index: `pages/field-notes/`, plus an
+unlinked `pages/admin/admin.html` and `netlify/functions/publish.mjs`.
+Fills in the "field notes" placeholder that's been in `index.html` since
+the beginning, with a working publish flow rather than more hand-written
+HTML.
+
+The one backend on the site. A shared secret gates a Netlify serverless
+function that commits new post files straight to `main` via the GitHub
+Contents API — see the "One narrow exception" section in `CLAUDE.md` for
+why that's allowed to break the branch-per-change and Prettier-covers-
+everything rules, and nothing else.
+
+Deliberate choices worth remembering:
+
+- **Zero npm dependencies in the function**, on purpose. Only built-in
+  Node/Fetch APIs — no `package.json` anywhere in the repo, no SDK. This
+  is what keeps "no runtime dependencies" true for the backend too, not
+  just the pages a reader sees.
+- **The secret is typed on every publish**, never stored in
+  `localStorage`/`sessionStorage`. Smallest attack surface, simplest to
+  build — the tradeoff is retyping it each time, which is fine at
+  personal-site volume.
+- **Post bodies are plain text only.** Blank line = new paragraph,
+  everything else escaped and shown as literal text. No markdown, no
+  inline formatting. Chosen explicitly over a hand-rolled markdown-lite
+  formatter to keep the function's code small and match the site's plain,
+  hand-written feel. Images, comments, and drafts are all out of scope
+  for the same reason — none of them exist yet.
+- **Four sequential commits, not one atomic one**, because the GitHub
+  Contents API has no multi-file commit. Order matters: the new post page
+  commits first, then `posts.json`, then the regenerated listing, then
+  the regenerated feed last. A failure partway through therefore leaves
+  the smallest possible mess — an orphan post page nothing links to yet —
+  rather than a broken link advertised in the feed or the directory. This
+  is an accepted tradeoff, not a bug to eventually fix; a fully atomic
+  multi-file commit would need the much heavier Git Data API for a
+  single-owner site where a failed publish is just retried by hand.
+- **`posts.json`, `field-notes.html`, `feed.xml`, and every
+  `posts/<slug>.html` are generated, not hand-written**, and are
+  overwritten on every publish. `field-notes.css` is the one file in that
+  folder that's safe to edit by hand — the function never touches it.
+- **`.prettierignore` exempts the two generated HTML shapes** (the
+  listing page and every post page) from the "whole tree complies" rule.
+  Prettier's HTML printer is whitespace-sensitive in ways that are
+  fragile to hand-match inside a template string, and getting it wrong
+  would turn CI red after every single future publish — a recurring
+  nuisance, not a one-time bug. `posts.json` stays in the normal
+  prettier-checked set; `JSON.stringify(posts, null, 2)` matches
+  Prettier's default JSON formatting closely enough that it didn't need
+  the same exemption. `feed.xml` was never in Prettier's checked glob
+  (`html,css,js,json,md`) to begin with.
+- **The listing page reuses the home page's directory classes** —
+  `.directory`, `.directory__list`, `.entry`, `.entry__num`, and so on —
+  rather than inventing new ones, since a field notes index is the same
+  "index of /" device one level down. The only new class is
+  `.field-notes__empty`, and it lives in the hand-owned
+  `field-notes.css`.
+- **Two accepted, documented-not-solved risks.** The publish endpoint has
+  no rate limiting beyond the shared secret itself — Netlify's free tier
+  has no path-level access control, so a weak secret is guessable. And
+  `posts.json` is read then written across two separate HTTP calls, so a
+  concurrent publish could hit a GitHub `409` on a stale `sha`; harmless
+  at single-owner scale, but real.
+- **`netlify/functions/publish.test.mjs` is the project's first test
+  file.** Everything else on this site is checked by hand or by CI's
+  format/link/no-build-step guards; the publish function's generator
+  logic (slug collisions, escaping, RSS structure, date formatting) can't
+  be verified any other way without a live Netlify + GitHub deploy, which
+  is exactly the situation a test earns its keep. Zero dependencies —
+  `node:test` and `node:assert/strict` are both built in — so it doesn't
+  compromise the no-runtime-dependencies rule either. Run with
+  `node --test netlify/functions/publish.test.mjs`.
+
+Open items: the publish flow itself is unverified end-to-end, since that
+needs a live Netlify site connected to this repo with real env vars set
+(`PUBLISH_SECRET`, `GITHUB_TOKEN`, `GITHUB_REPOSITORY`) — see the
+"Publishing setup" section of `README.md`. Everything checkable without
+that (templates, escaping, the CI checks, the unit tests) has been.

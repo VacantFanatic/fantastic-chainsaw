@@ -1,0 +1,11 @@
+[build]
+  publish = "."
+
+[functions]
+  directory = "netlify/functions"
+
+[[headers]]
+  for = "/pages/field-notes/feed.xml"
+
+  [headers.values]
+    Content-Type = "application/rss+xml; charset=utf-8"

@@ -30,7 +30,21 @@ page, with no framework, no build step, and no algorithm.
 │       ├── character-generator-engine.js    # seeded randomness + buildCharacter()
 │       ├── character-generator-export.js    # plain text / PDF / JSON export
 │       └── character-generator.js           # rendering, state, serial, UI wiring
-├── .prettierrc.json    # formatting rules
+│   ├── field-notes/
+│   │   ├── field-notes.html    # generated listing — do not hand-edit
+│   │   ├── field-notes.css     # hand-owned styling, never touched by publish.mjs
+│   │   ├── posts.json          # generated manifest — do not hand-edit
+│   │   ├── feed.xml            # generated RSS 2.0 feed — do not hand-edit
+│   │   └── posts/*.html        # generated post pages — do not hand-edit
+│   └── admin/
+│       └── admin.html  # unlinked publish form — posts to /api/publish
+├── netlify/
+│   └── functions/
+│       ├── publish.mjs         # the one backend piece — see CLAUDE.md
+│       └── publish.test.mjs    # zero-dep unit tests, `node --test`
+├── netlify.toml         # publish dir, functions dir, feed.xml content-type
+├── .prettierrc.json     # formatting rules
+├── .prettierignore      # exempts the two publish-generated HTML shapes
 └── README.md
 ```
 
@@ -66,8 +80,28 @@ Pick one (both are free for a static site like this):
 
 - **GitHub Pages** — push this folder to a GitHub repo, then enable
   Pages in the repo settings (Settings → Pages → deploy from branch).
-- **Netlify** — connect the repo at netlify.com, or drag-and-drop the
-  repo folder onto their dashboard for an instant deploy.
+  Serves every page fine, but GitHub Pages can't run serverless
+  functions, so **field notes publishing won't work** — you'd be back to
+  hand-writing and committing post files yourself.
+- **Netlify** — connect the repo at netlify.com. Required if you want
+  live publishing, since `netlify/functions/publish.mjs` needs it.
+  `netlify.toml` already declares the publish directory and functions
+  directory, so connecting the repo is enough — no other Netlify config
+  to write.
+
+### Publishing setup (Netlify only)
+
+Set these as environment variables on the Netlify site (Site settings →
+Environment variables) before using `pages/admin/admin.html`:
+
+- `PUBLISH_SECRET` — a long, random string. Typed into the admin page's
+  password field on each publish; never stored in the browser.
+- `GITHUB_TOKEN` — a GitHub fine-grained personal access token, scoped to
+  **just this repo**, with Contents: Read and write permission.
+- `GITHUB_REPOSITORY` — `owner/repo`, e.g. `VacantFanatic/fantastic-chainsaw`.
+
+`URL` (the site's own address, used for absolute RSS links) is injected
+automatically by Netlify — nothing to set.
 
 ## Domain
 

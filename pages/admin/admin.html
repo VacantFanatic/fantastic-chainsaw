@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>publish a note — STATIC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../css/style.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0f0a'/%3E%3Crect x='3' y='3' width='4' height='4' fill='%2363e08a'/%3E%3Crect x='9' y='3' width='4' height='4' fill='%2363e08a'/%3E%3Crect x='3' y='9' width='4' height='4' fill='%2363e08a'/%3E%3Crect x='9' y='9' width='4' height='4' fill='%2363e08a'/%3E%3C/svg%3E"
+    />
+    <style>
+      .admin {
+        max-width: 40rem;
+        margin: 0 auto;
+        padding: 2.5rem 2rem 4rem;
+      }
+
+      .admin__label {
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        color: var(--ink-soft);
+        margin: 0 0 1rem;
+      }
+
+      body.phosphor .admin__label {
+        color: var(--phosphor-dim);
+      }
+
+      .admin__field {
+        margin-bottom: 1.5rem;
+      }
+
+      .admin__field label {
+        display: block;
+        font-family: var(--mono);
+        font-size: 0.8rem;
+        margin-bottom: 0.4rem;
+      }
+
+      .admin__field input,
+      .admin__field textarea {
+        width: 100%;
+        font-family: var(--serif);
+        font-size: 1rem;
+        padding: 0.6rem 0.7rem;
+        border: 1px solid var(--line);
+        border-radius: 2px;
+        background: var(--paper);
+        color: var(--ink);
+      }
+
+      body.phosphor .admin__field input,
+      body.phosphor .admin__field textarea {
+        border-color: var(--phosphor-line);
+        background: var(--phosphor-bg);
+        color: var(--phosphor-fg);
+      }
+
+      .admin__field input:focus-visible,
+      .admin__field textarea:focus-visible {
+        outline: 2px solid var(--rust);
+        outline-offset: 2px;
+      }
+
+      .admin__field textarea {
+        min-height: 14rem;
+        resize: vertical;
+        font-family: var(--serif);
+      }
+
+      .admin__hint {
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        color: var(--ink-soft);
+        margin-top: 0.4rem;
+      }
+
+      body.phosphor .admin__hint {
+        color: var(--phosphor-dim);
+      }
+
+      .admin__submit {
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        background: transparent;
+        border: 1px solid var(--ink);
+        color: var(--ink);
+        padding: 0.6rem 1.2rem;
+        border-radius: 2px;
+        cursor: pointer;
+      }
+
+      body.phosphor .admin__submit {
+        border-color: var(--phosphor-fg);
+        color: var(--phosphor-fg);
+      }
+
+      .admin__submit:focus-visible {
+        outline: 2px solid var(--rust);
+        outline-offset: 2px;
+      }
+
+      .admin__submit:disabled {
+        opacity: 0.5;
+        cursor: default;
+      }
+
+      .admin__status {
+        font-family: var(--mono);
+        font-size: 0.85rem;
+        margin-top: 1.2rem;
+      }
+
+      .admin__status[data-state="error"] {
+        color: var(--rust);
+      }
+
+      .admin__status[data-state="ok"] {
+        color: var(--mint);
+      }
+
+      body.phosphor .admin__status[data-state="ok"] {
+        color: var(--phosphor-fg);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="admin">
+      <p class="admin__label">publish a field note</p>
+      <form id="publish-form">
+        <div class="admin__field">
+          <label for="field-title">title</label>
+          <input id="field-title" name="title" type="text" required />
+        </div>
+        <div class="admin__field">
+          <label for="field-body">body</label>
+          <textarea id="field-body" name="body" required></textarea>
+          <p class="admin__hint">
+            plain text -- a blank line starts a new paragraph.
+          </p>
+        </div>
+        <div class="admin__field">
+          <label for="field-secret">secret</label>
+          <input
+            id="field-secret"
+            name="secret"
+            type="password"
+            required
+            autocomplete="off"
+          />
+        </div>
+        <button class="admin__submit" type="submit">publish</button>
+        <p class="admin__status" id="status" role="status"></p>
+      </form>
+    </main>
+    <script>
+      const form = document.getElementById("publish-form");
+      const status = document.getElementById("status");
+      const submitButton = form.querySelector(".admin__submit");
+      const secretField = document.getElementById("field-secret");
+
+      function setStatus(state, text) {
+        status.dataset.state = state;
+        status.textContent = text;
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const title = form.title.value.trim();
+        const body = form.body.value.trim();
+        const secret = form.secret.value;
+
+        if (!title || !body) {
+          setStatus("error", "title and body are both required.");
+          return;
+        }
+
+        submitButton.disabled = true;
+        setStatus("", "publishing…");
+
+        try {
+          const res = await fetch("/api/publish", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ title, body, secret }),
+          });
+          const data = await res.json();
+
+          if (!res.ok) {
+            throw new Error(data.detail || data.error || `HTTP ${res.status}`);
+          }
+
+          setStatus("ok", `published -- ${data.url}`);
+          form.title.value = "";
+          form.body.value = "";
+        } catch (error) {
+          setStatus("error", error.message);
+        } finally {
+          secretField.value = "";
+          submitButton.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
