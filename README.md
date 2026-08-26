@@ -40,8 +40,11 @@ page, with no framework, no build step, and no algorithm.
 │       └── admin.html  # unlinked publish form — posts to /api/publish
 ├── netlify/
 │   └── functions/
-│       ├── publish.mjs         # the one backend piece — see CLAUDE.md
-│       └── publish.test.mjs    # zero-dep unit tests, `node --test`
+│       └── publish.mjs         # the one backend piece — see CLAUDE.md
+├── tests/
+│   └── publish.test.mjs        # zero-dep unit tests, `node --test`, kept
+│                                # out of netlify/functions/ so Netlify
+│                                # doesn't try to deploy it as a function
 ├── netlify.toml         # publish dir, functions dir, feed.xml content-type
 ├── .prettierrc.json     # formatting rules
 ├── .prettierignore      # exempts the two publish-generated HTML shapes

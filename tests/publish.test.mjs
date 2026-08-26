@@ -1,7 +1,12 @@
 // Unit tests for publish.mjs's pure helpers -- the generator logic that
 // can't otherwise be checked without a live Netlify + GitHub deploy. No
 // network calls here, no npm dependency: node:test and node:assert/strict
-// are both built in. Run with `node --test netlify/functions/`.
+// are both built in. Run with `node --test tests/`.
+//
+// Lives outside netlify/functions/ on purpose -- Netlify's function
+// bundler treats every file in that directory as a function to deploy,
+// and rejects "publish.test" as an invalid function name (the "." isn't
+// allowed in a function name).
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -21,7 +26,7 @@ import {
   extractStandaloneLinks,
   parseOgTags,
   isFetchableUrl,
-} from "./publish.mjs";
+} from "../netlify/functions/publish.mjs";
 
 test("slugify: lowercases, strips punctuation, collapses to dashes", () => {
   assert.equal(
