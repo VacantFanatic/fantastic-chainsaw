@@ -835,15 +835,19 @@ Deliberate choices worth remembering:
   `posts.json` is read then written across two separate HTTP calls, so a
   concurrent publish could hit a GitHub `409` on a stale `sha`; harmless
   at single-owner scale, but real.
-- **`netlify/functions/publish.test.mjs` is the project's first test
-  file.** Everything else on this site is checked by hand or by CI's
-  format/link/no-build-step guards; the publish function's generator
-  logic (slug collisions, escaping, RSS structure, date formatting) can't
-  be verified any other way without a live Netlify + GitHub deploy, which
-  is exactly the situation a test earns its keep. Zero dependencies —
-  `node:test` and `node:assert/strict` are both built in — so it doesn't
-  compromise the no-runtime-dependencies rule either. Run with
-  `node --test netlify/functions/publish.test.mjs`.
+- **`tests/publish.test.mjs` is the project's first test file.**
+  Everything else on this site is checked by hand or by CI's format/link/
+  no-build-step guards; the publish function's generator logic (slug
+  collisions, escaping, RSS structure, date formatting) can't be verified
+  any other way without a live Netlify + GitHub deploy, which is exactly
+  the situation a test earns its keep. Zero dependencies — `node:test`
+  and `node:assert/strict` are both built in — so it doesn't compromise
+  the no-runtime-dependencies rule either. Run with
+  `node --test tests/publish.test.mjs`. It lives outside
+  `netlify/functions/` deliberately: Netlify's function bundler deploys
+  every file in that directory as a function, and rejected this one
+  during a deploy because `.` isn't a valid character in a function
+  name — see the deploy fix noted below.
 
 Open items: the publish flow itself is unverified end-to-end, since that
 needs a live Netlify site connected to this repo with real env vars set
