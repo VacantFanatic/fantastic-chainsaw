@@ -1,6 +1,9 @@
-// The one backend piece on this otherwise fully static site. A secret-gated
-// endpoint that takes a title + plain-text body and commits a new field
-// note straight to this repo's `main` branch via the GitHub Contents API.
+// Half of the one backend piece on this otherwise fully static site. A
+// secret-gated endpoint that takes a title + plain-text body and commits a
+// new field note straight to this repo's `main` branch via the GitHub
+// Contents API. Its counterpart, unpublish.mjs, takes a note back out
+// again, and imports this file's renderers and GitHub plumbing rather than
+// keeping a second copy of them.
 // Zero npm dependencies on purpose -- only built-in Node/Fetch APIs -- so
 // "no runtime dependencies" stays true even for the backend. See CLAUDE.md
 // for why this is the one deliberate exception to the site's rules.
@@ -41,6 +44,15 @@ const MONTHS = [
   "December",
 ];
 
+// The rendered page is HTML; the thing a human wrote is plain text. Keeping
+// the plain text next to the page is what makes an edit possible later --
+// edit.mjs reads this back rather than trying to reverse-engineer prose out
+// of generated markup. Public, like everything else here, and identical in
+// content to the post it belongs to.
+export function sourcePath(slug) {
+  return `pages/field-notes/sources/${slug}.txt`;
+}
+
 class PublishError extends Error {
   constructor(status, code, message) {
     super(message || code);
@@ -49,7 +61,7 @@ class PublishError extends Error {
   }
 }
 
-class GitHubApiError extends Error {
+export class GitHubApiError extends Error {
   constructor(step, status, detail) {
     super(`GitHub API failed at step "${step}": ${status} ${detail}`);
     this.step = step;
@@ -59,9 +71,10 @@ class GitHubApiError extends Error {
 }
 
 /* ---------------------------------------------------------
-   Pure helpers -- exported for unit testing (publish.test.mjs).
-   Netlify only ever imports the default export, so the extra
-   named exports are inert in production.
+   Pure helpers -- exported for unit testing (publish.test.mjs)
+   and for unpublish.mjs, which regenerates the same listing and
+   feed after removing a note. Netlify only ever calls the
+   default export, so the named ones cost nothing in production.
    --------------------------------------------------------- */
 
 export function slugify(title) {
@@ -355,7 +368,7 @@ export async function fetchLinkPreview(url) {
 // the same string it split the paragraph on. Parallel rather than
 // sequential so the worst case is one timeout, not the sum of all of
 // them -- serverless functions have an execution budget.
-async function fetchLinkPreviews(links) {
+export async function fetchLinkPreviews(links) {
   const previews = new Map();
   if (links.length === 0) return previews;
 
@@ -493,7 +506,17 @@ ${items}
 }
 
 /* ---------------------------------------------------------
-   GitHub Contents API
+   GitHub API -- shared with unpublish.mjs.
+
+   Reads go through the Contents API: one file, one call. Writes go
+   through the lower-level Git Data API instead, because the Contents
+   API can only write one file per commit -- and a publish touches
+   four files, which meant four commits, four pushes, and four Netlify
+   builds for a single note. Assembling the tree by hand costs a
+   handful more requests but produces exactly one commit, so exactly
+   one build. It also makes a publish atomic for free: either the
+   whole note lands or none of it does, with no half-finished state
+   where the manifest, the listing and the feed disagree.
    --------------------------------------------------------- */
 
 function ghHeaders() {
@@ -507,7 +530,8 @@ function ghHeaders() {
   };
 }
 
-async function ghGetFile(repo, path) {
+// Returns the file's text, or null if it isn't there.
+export async function ghGetFile(repo, path) {
   const res = await fetch(
     `${GITHUB_API}/repos/${repo}/contents/${path}?ref=main`,
     { headers: ghHeaders() },
@@ -516,42 +540,74 @@ async function ghGetFile(repo, path) {
   if (!res.ok)
     throw new GitHubApiError(`get:${path}`, res.status, await res.text());
   const json = await res.json();
-  return {
-    sha: json.sha,
-    content: Buffer.from(json.content, "base64").toString("utf8"),
-  };
+  return Buffer.from(json.content, "base64").toString("utf8");
 }
 
-async function ghPutFile(repo, path, content, message, sha) {
-  const body = {
-    message,
-    content: Buffer.from(content, "utf8").toString("base64"),
-    branch: "main",
-  };
-  if (sha) body.sha = sha;
-
-  const res = await fetch(`${GITHUB_API}/repos/${repo}/contents/${path}`, {
-    method: "PUT",
-    headers: { ...ghHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+async function ghJson(step, url, { method = "GET", body } = {}) {
+  const res = await fetch(url, {
+    method,
+    headers: {
+      ...ghHeaders(),
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  if (!res.ok)
-    throw new GitHubApiError(`put:${path}`, res.status, await res.text());
+  if (!res.ok) throw new GitHubApiError(step, res.status, await res.text());
   return res.json();
+}
+
+// One commit on `main` covering every entry in `files`. An entry is
+// either `{ path, content }` to write that file or `{ path, content:
+// null }` to remove it -- a tree entry with a null sha is how the Git
+// Data API spells "this path is gone".
+export async function ghCommit(repo, message, files) {
+  const git = `${GITHUB_API}/repos/${repo}/git`;
+
+  const ref = await ghJson("get:ref", `${git}/ref/heads/main`);
+  const parentSha = ref.object.sha;
+  const parent = await ghJson("get:commit", `${git}/commits/${parentSha}`);
+
+  const tree = await ghJson("create:tree", `${git}/trees`, {
+    method: "POST",
+    body: {
+      base_tree: parent.tree.sha,
+      tree: files.map(({ path, content }) => ({
+        path,
+        mode: "100644",
+        type: "blob",
+        ...(content === null ? { sha: null } : { content }),
+      })),
+    },
+  });
+
+  const commit = await ghJson("create:commit", `${git}/commits`, {
+    method: "POST",
+    body: { message, tree: tree.sha, parents: [parentSha] },
+  });
+
+  // Deliberately not a force update: if anything else pushed to main
+  // between reading the ref and writing it, GitHub rejects this as a
+  // non-fast-forward instead of quietly dropping that commit.
+  await ghJson("update:ref", `${git}/refs/heads/main`, {
+    method: "PATCH",
+    body: { sha: commit.sha },
+  });
+
+  return commit;
 }
 
 /* ---------------------------------------------------------
    Handler
    --------------------------------------------------------- */
 
-function json(status, body) {
+export function json(status, body) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json" },
   });
 }
 
-function secretIsValid(candidate) {
+export function secretIsValid(candidate) {
   const expected = process.env.PUBLISH_SECRET ?? "";
   // Hash both sides to a fixed-length digest first: timingSafeEqual throws
   // on mismatched-length buffers rather than returning false, so comparing
@@ -607,8 +663,8 @@ export default async (req) => {
   }
 
   try {
-    const manifestFile = await ghGetFile(repo, "pages/field-notes/posts.json");
-    const posts = manifestFile ? JSON.parse(manifestFile.content) : [];
+    const manifest = await ghGetFile(repo, "pages/field-notes/posts.json");
+    const posts = manifest ? JSON.parse(manifest) : [];
 
     const slug = uniqueSlug(slugify(title), posts);
     const post = {
@@ -620,47 +676,31 @@ export default async (req) => {
 
     const previews = await fetchLinkPreviews(extractStandaloneLinks(body));
 
-    // Committed in this order on purpose: the GitHub Contents API has no
-    // atomic multi-file commit, so a mid-sequence failure is an accepted
-    // tradeoff. This order means the worst case is an orphan post page
-    // nothing links to yet -- never a broken link advertised in the feed
-    // or the directory.
-    await ghPutFile(
-      repo,
-      `pages/field-notes/posts/${slug}.html`,
-      renderPostPage(post, body, previews),
-      `field notes: add "${title}"`,
-    );
-
     const newPosts = [post, ...posts];
-    await ghPutFile(
-      repo,
-      "pages/field-notes/posts.json",
-      `${JSON.stringify(newPosts, null, 2)}\n`,
-      `field notes: update manifest for "${title}"`,
-      manifestFile?.sha,
-    );
 
-    const listingFile = await ghGetFile(
-      repo,
-      "pages/field-notes/field-notes.html",
-    );
-    await ghPutFile(
-      repo,
-      "pages/field-notes/field-notes.html",
-      renderListingPage(newPosts),
-      "field notes: regenerate listing",
-      listingFile?.sha,
-    );
-
-    const feedFile = await ghGetFile(repo, "pages/field-notes/feed.xml");
-    await ghPutFile(
-      repo,
-      "pages/field-notes/feed.xml",
-      renderFeed(newPosts, siteUrl),
-      "field notes: regenerate feed",
-      feedFile?.sha,
-    );
+    // The new page, its plain-text source, and all three generated files
+    // they have to stay in step with, in a single commit -- one push, one
+    // Netlify build, and no window where the listing advertises a note
+    // that isn't there yet.
+    await ghCommit(repo, `field notes: publish "${title}"`, [
+      {
+        path: `pages/field-notes/posts/${slug}.html`,
+        content: renderPostPage(post, body, previews),
+      },
+      { path: sourcePath(slug), content: `${body.trim()}\n` },
+      {
+        path: "pages/field-notes/posts.json",
+        content: `${JSON.stringify(newPosts, null, 2)}\n`,
+      },
+      {
+        path: "pages/field-notes/field-notes.html",
+        content: renderListingPage(newPosts),
+      },
+      {
+        path: "pages/field-notes/feed.xml",
+        content: renderFeed(newPosts, siteUrl),
+      },
+    ]);
 
     return json(200, {
       ok: true,
