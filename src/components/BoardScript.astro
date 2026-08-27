@@ -1,0 +1,192 @@
+---
+// The pinboard's only JavaScript, and the first the public side of this
+// site has ever shipped -- see "How field notes work" in CLAUDE.md, which
+// records what that costs and why it was accepted here.
+//
+// Everything it does is an enhancement over a page that already works:
+// the view switch is a checkbox and :has(), the cards are plain links, and
+// the board renders complete with the script blocked. This adds three
+// things on top -- remembering which view you left it in, letting you pick
+// a card up by its fastener and move it, and putting the board back.
+//
+// A component rather than an inline block for the same reason the admin
+// scripts are: a <script> nested inside a JSX conditional is valid Astro
+// and not parseable by prettier-plugin-astro.
+---
+
+<script is:inline>
+  (() => {
+    const VIEW_KEY = "static:field-notes:view";
+    const POS_KEY = "static:field-notes:positions";
+
+    // How far a card may be dragged from where it was pinned. Bounded so
+    // nothing can be flung off the board and take the page's scroll width
+    // with it.
+    const REACH = 140;
+    const STEP = 8;
+
+    const pinboard = document.querySelector(".pinboard");
+    if (!pinboard) return;
+
+    // Same shape as the wire's storage helpers: private browsing and
+    // disabled storage are normal conditions, not errors. The board just
+    // stops remembering.
+    const load = (key, fallback) => {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        return fallback;
+      }
+    };
+    const save = (key, value) => {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        /* storage unavailable -- this session stays in memory */
+      }
+    };
+
+    /* ------------------------------------------------ the view switch */
+
+    const view = document.getElementById("sheet-view");
+    if (view) {
+      if (load(VIEW_KEY, "board") === "sheet") view.checked = true;
+      view.addEventListener("change", () => {
+        save(VIEW_KEY, view.checked ? "sheet" : "board");
+      });
+    }
+
+    /* -------------------------------------------- picking a card up */
+
+    const clamp = (n) => Math.max(-REACH, Math.min(REACH, Math.round(n)));
+    let positions = load(POS_KEY, {});
+    if (typeof positions !== "object" || positions === null) positions = {};
+
+    const slots = new Map();
+    for (const slot of pinboard.querySelectorAll(".board__slot")) {
+      if (slot.dataset.slug) slots.set(slot.dataset.slug, slot);
+    }
+
+    const place = (slug) => {
+      const slot = slots.get(slug);
+      if (!slot) return;
+      const at = positions[slug];
+      slot.style.setProperty("--dx", (at ? clamp(at.x) : 0) + "px");
+      slot.style.setProperty("--dy", (at ? clamp(at.y) : 0) + "px");
+    };
+
+    const moveTo = (slug, x, y) => {
+      positions[slug] = { x: clamp(x), y: clamp(y) };
+      place(slug);
+    };
+
+    const tidy = document.getElementById("tidy-board");
+    const showTidy = () => {
+      if (tidy) tidy.hidden = Object.keys(positions).length === 0;
+    };
+
+    for (const slug of Object.keys(positions)) place(slug);
+
+    for (const fastener of pinboard.querySelectorAll(".keepsake__fastener")) {
+      const slot = fastener.closest(".board__slot");
+      const slug = slot && slot.dataset.slug;
+      if (!slug) continue;
+
+      // It stops being decoration the moment it can be used, so it stops
+      // being aria-hidden at the same moment.
+      fastener.removeAttribute("aria-hidden");
+      fastener.setAttribute("role", "button");
+      fastener.setAttribute("tabindex", "0");
+      const card = fastener.closest(".keepsake");
+      const title = card?.querySelector(".keepsake__title")?.textContent.trim();
+      fastener.setAttribute(
+        "aria-label",
+        `move the card for “${title || slug}”`,
+      );
+      fastener.classList.add("keepsake__fastener--handle");
+
+      let from = null;
+
+      fastener.addEventListener("pointerdown", (event) => {
+        // Only the primary button, and never in contact-sheet view where
+        // the cards are a grid rather than a scatter.
+        if (event.button !== 0 || view?.checked) return;
+        event.preventDefault();
+        const at = positions[slug] ?? { x: 0, y: 0 };
+        from = { x: event.clientX, y: event.clientY, ox: at.x, oy: at.y };
+        try {
+          // Keeps the card following a pointer that leaves it. Throws if
+          // the pointer is already gone, which is not a reason to drop
+          // the drag on the floor.
+          fastener.setPointerCapture(event.pointerId);
+        } catch {
+          /* no capture -- the move handler still tracks while over it */
+        }
+        card?.classList.add("is-held");
+      });
+
+      fastener.addEventListener("pointermove", (event) => {
+        if (!from) return;
+        moveTo(
+          slug,
+          from.ox + event.clientX - from.x,
+          from.oy + event.clientY - from.y,
+        );
+      });
+
+      const drop = () => {
+        if (!from) return;
+        from = null;
+        card?.classList.remove("is-held");
+        save(POS_KEY, positions);
+        showTidy();
+      };
+      fastener.addEventListener("pointerup", drop);
+      fastener.addEventListener("pointercancel", drop);
+
+      // The keyboard equivalent, so moving a card isn't a drag-only
+      // gesture. Escape puts this one card back where it was pinned.
+      fastener.addEventListener("keydown", (event) => {
+        if (view?.checked) return;
+        const at = positions[slug] ?? { x: 0, y: 0 };
+        const step = event.shiftKey ? STEP * 3 : STEP;
+        let handled = true;
+        switch (event.key) {
+          case "ArrowLeft":
+            moveTo(slug, at.x - step, at.y);
+            break;
+          case "ArrowRight":
+            moveTo(slug, at.x + step, at.y);
+            break;
+          case "ArrowUp":
+            moveTo(slug, at.x, at.y - step);
+            break;
+          case "ArrowDown":
+            moveTo(slug, at.x, at.y + step);
+            break;
+          case "Escape":
+            delete positions[slug];
+            place(slug);
+            break;
+          default:
+            handled = false;
+        }
+        if (!handled) return;
+        event.preventDefault();
+        save(POS_KEY, positions);
+        showTidy();
+      });
+    }
+
+    if (tidy) {
+      tidy.addEventListener("click", () => {
+        positions = {};
+        for (const slug of slots.keys()) place(slug);
+        save(POS_KEY, positions);
+        showTidy();
+      });
+    }
+    showTidy();
+  })();
+</script>

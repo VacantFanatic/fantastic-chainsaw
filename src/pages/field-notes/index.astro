@@ -7,12 +7,17 @@
 // the next -- its tilt, its tint, what holds it to the board, how tall its
 // window is -- is derived from the note's own slug, so a note always looks
 // the same on every render without anything being stored or randomised.
-// No client JavaScript, and deliberately no <img>: the emulsion in each
-// window is CSS, so a reader's pageview still fetches nothing from anyone
-// else's server.
+// How faded it is comes from its date instead, because that one is
+// information: the board really does bleach towards the back.
+//
+// Deliberately no <img> anywhere: the emulsion in each window is CSS, so a
+// reader's pageview still fetches nothing from anyone else's server.
+// tests/integration.mjs asserts that, and it is a privacy rule, not a
+// styling preference.
 export const prerender = false;
 
 import Base from "../../layouts/Base.astro";
+import BoardScript from "../../components/BoardScript.astro";
 import { supabaseFor, isConfigured } from "../../lib/supabase.js";
 import { listPublished } from "../../lib/notes.js";
 import { humanDate } from "../../lib/render.mjs";
@@ -48,6 +53,20 @@ const TINTS = ["a", "b", "c", "d", "e"];
 const FASTENERS = ["pin", "clip", "corner"];
 const WINDOWS = ["square", "tall", "wide"];
 
+// Two years to fade all the way out. Long enough that a year of writing
+// still has visible range in it, short enough that the back of the board
+// reads as old at a glance.
+const BLEACH_DAYS = 730;
+const DAY = 24 * 60 * 60 * 1000;
+const now = Date.now();
+
+function bleachFor(publishedAt) {
+  const at = Date.parse(publishedAt);
+  if (Number.isNaN(at)) return 0;
+  const age = Math.max(0, now - at) / DAY;
+  return Math.min(1, age / BLEACH_DAYS).toFixed(3);
+}
+
 function keepsake(slug) {
   const h = hash(slug);
   return {
@@ -60,6 +79,25 @@ function keepsake(slug) {
     window: WINDOWS[(h >>> 21) % WINDOWS.length],
   };
 }
+
+// Numbering is global and counts down from the newest, so a note keeps
+// its number no matter which year band it sits in.
+const cards = notes.map((note, i) => ({
+  note,
+  num: String(count - i).padStart(2, "0"),
+  bleach: bleachFor(note.published_at),
+  ...keepsake(note.slug),
+}));
+
+// Strata: one band per year, newest first, in the order the notes already
+// arrived in (listPublished sorts by published_at descending).
+const strata = [];
+for (const card of cards) {
+  const year = new Date(card.note.published_at).getUTCFullYear();
+  const last = strata[strata.length - 1];
+  if (last && last.year === year) last.cards.push(card);
+  else strata.push({ year, cards: [card] });
+}
 ---
 
 <Base title="field notes — STATIC">
@@ -68,9 +106,28 @@ function keepsake(slug) {
     <header class="pinboard__head">
       <h1 class="pinboard__title">field notes</h1>
       <p class="pinboard__sub">
-        things worth keeping, pinned up as they happened. newest first.
+        things worth keeping, pinned up as they happened. newest first, and
+        fading towards the back.
       </p>
       <p class="directory__label">index of /field-notes/</p>
+
+      {
+        count > 0 && (
+          <div class="pinboard__controls">
+            {/* The view switch is a checkbox and :has(), so it works with
+                no JavaScript at all. The script below only remembers which
+                way it was left. */}
+            <input type="checkbox" id="sheet-view" class="view-switch__input" />
+            <label class="view-switch" for="sheet-view">
+              <span class="view-switch__dot" aria-hidden="true" />
+              contact sheet
+            </label>
+            <button type="button" id="tidy-board" class="pinboard__tidy" hidden>
+              tidy the board
+            </button>
+          </div>
+        )
+      }
     </header>
 
     {broken && <p class="field-notes__empty">{broken}</p>}
@@ -79,39 +136,80 @@ function keepsake(slug) {
         <p class="field-notes__empty">nothing published yet.</p>
       )
     }
+
     {
-      count > 0 && (
-        <ol class="board">
-          {notes.map((note, i) => {
-            const k = keepsake(note.slug);
-            const num = String(count - i).padStart(2, "0");
-            return (
+      strata.map(({ year, cards: band }) => (
+        <section class="stratum">
+          <h2 class="stratum__year">{year}</h2>
+          <ol class="board">
+            {band.map((card) => (
               <li
-                class={`board__slot board__slot--${k.window}`}
-                style={`--tilt:${k.tilt}deg;--nudge:${k.nudge}px`}
+                class={`board__slot board__slot--${card.window}`}
+                style={`--tilt:${card.tilt}deg;--nudge:${card.nudge}px;--bleach:${card.bleach}`}
+                data-slug={card.note.slug}
               >
-                <a
-                  class={`keepsake keepsake--${k.tint} keepsake--${k.fastener}`}
-                  href={`/field-notes/${note.slug}`}
+                <div
+                  class={`keepsake keepsake--${card.tint} keepsake--${card.fastener}`}
                 >
-                  <span class="keepsake__fastener" aria-hidden="true" />
-                  <span class="keepsake__window" aria-hidden="true">
-                    <span class="keepsake__num">{num}</span>
-                  </span>
-                  <span class="keepsake__caption">
-                    <span class="keepsake__title">{note.title}</span>
-                    <span class="keepsake__date">
-                      {humanDate(note.published_at)}
+                  <a
+                    class="keepsake__link"
+                    href={`/field-notes/${card.note.slug}`}
+                  >
+                    <span class="keepsake__faces">
+                      <span class="keepsake__face keepsake__face--front">
+                        <span class="keepsake__window" aria-hidden="true">
+                          <span class="keepsake__num">{card.num}</span>
+                        </span>
+                        <span class="keepsake__caption">
+                          <span class="keepsake__title">{card.note.title}</span>
+                          <span class="keepsake__date">
+                            {humanDate(card.note.published_at)}
+                          </span>
+                        </span>
+                        <span class="keepsake__scrawl">
+                          {card.note.excerpt}
+                        </span>
+                      </span>
+                      {/* The back is texture: it says nothing the front
+                          hasn't already said, so it is hidden from AT
+                          rather than read out twice. */}
+                      <span
+                        class="keepsake__face keepsake__face--back"
+                        aria-hidden="true"
+                      >
+                        <span class="keepsake__stamp">no. {card.num}</span>
+                        <span class="keepsake__reverse">
+                          {card.note.excerpt}
+                        </span>
+                        <span class="keepsake__date">
+                          {humanDate(card.note.published_at)}
+                        </span>
+                      </span>
                     </span>
-                  </span>
-                  <span class="keepsake__scrawl">{note.excerpt}</span>
-                </a>
+                  </a>
+                  {/* Decorative until the script upgrades it into a handle
+                      you can pick the card up by. After the link in the
+                      DOM so tabbing reaches the note first.
+
+                      The title is deliberately NOT repeated here as a
+                      data- attribute: Astro escapes quotes and & in
+                      attribute values but leaves < alone, so a note
+                      titled "<img ...>" would put a literal <img into the
+                      listing. Inert inside quotes, but tests/integration
+                      .mjs asserts the listing has no <img at all, and
+                      that assertion guards a privacy rule worth more than
+                      the convenience. The script reads the title out of
+                      the card instead. */}
+                  <span class="keepsake__fastener" aria-hidden="true" />
+                </div>
               </li>
-            );
-          })}
-        </ol>
-      )
+            ))}
+          </ol>
+        </section>
+      ))
     }
+
     <p class="field-notes__feed"><a href="/field-notes/feed.xml">RSS</a></p>
   </main>
+  {count > 0 && <BoardScript />}
 </Base>

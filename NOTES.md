@@ -1376,3 +1376,25 @@ The unit and integration suites do not cover any of this: `fake-supabase`
 reimplements the RLS rules in JavaScript rather than running the SQL, so
 it will happily keep passing whatever `schema.sql` says. Worth remembering
 before trusting a green CI on a schema change.
+
+## Found while building the pinboard (2026-08-27)
+
+**`--rust` on `--paper` is 4.33:1, which is under AA for small text.**
+Still open. It affects `.back-link a` and the RSS link on every field
+notes page, and it predates the pinboard — the board just made it visible
+by needing another control. The pinboard’s “tidy the board” button dodges
+it by setting its label in `--ink` and leaving `--rust` on the border,
+which is the same text/border token split that keeps `--phosphor-dim`
+apart from `--phosphor-line`. The real fix is either a darker rust for
+text or an accepted second token; both are a site-wide change and neither
+belongs in a presentation branch.
+
+**Astro leaves `<` unescaped inside attribute values.** It escapes `"`
+and `&`, so nothing breaks out of the attribute, but a note titled
+`<img src=x ...>` repeated into a `data-` attribute puts a literal `<img`
+into the page. That is inert, and it still trips the integration suite’s
+“no `<img>` anywhere in the listing” assertion, which guards the rule that
+a reader’s pageview fetches nothing from anyone else’s server. The
+pinboard reads the title out of the rendered card instead of repeating
+it. Not a vulnerability; worth knowing before putting note text in an
+attribute again.
