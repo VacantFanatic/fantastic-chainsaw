@@ -77,17 +77,28 @@ jobs:
           PUBLIC_SUPABASE_ANON_KEY: fake-anon-key
           SITE_URL: http://localhost:4321
         run: |
-          # `astro dev` detaches into a background daemon and returns, so
-          # there is no job to background here -- just something to poll
-          # for, and to stop afterwards.
-          npx astro dev --port 4321
+          # `astro dev` does NOT detach on its own -- it runs in the
+          # foreground and never returns, which hung this step until the
+          # job timed out. Astro does have a `--background` flag, but it
+          # goes through its own lock file and supervisor process: more
+          # moving parts than this needs, and it fails outright on some
+          # platforms. A plain shell background job and a PID is portable
+          # and does not depend on Astro CLI behaviour that has already
+          # changed under us once.
+          npx astro dev --port 4321 > astro-dev.log 2>&1 &
+          dev_pid=$!
           for i in $(seq 1 60); do
             curl -sf -o /dev/null http://localhost:4321/admin && break
             sleep 1
           done
-          curl -sf -o /dev/null http://localhost:4321/admin \
-            || { echo "::error::dev server never came up"; npx astro dev logs; exit 1; }
-          node tests/integration.mjs
-          status=$?
-          npx astro dev stop || true
+          curl -sf -o /dev/null http://localhost:4321/admin || {
+            echo "::error::dev server never came up"
+            cat astro-dev.log
+            kill "$dev_pid" 2>/dev/null || true
+            exit 1
+          }
+          # Captured rather than left to `set -e`, so the dev server is
+          # still killed when the tests fail.
+          if node tests/integration.mjs; then status=0; else status=$?; fi
+          kill "$dev_pid" 2>/dev/null || true
           exit $status
