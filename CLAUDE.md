@@ -231,9 +231,23 @@ NOTES.md            running review notes: known issues, open items
 
 ## Still open
 
-`main` has no server-side protection — the repo is private on a free plan,
-so GitHub refuses branch protection and rulesets. Branch-per-change is a
-convention here, not something the remote enforces.
+`main` **is** protected server-side now, which it was not when this file
+was first written. A repository ruleset named `main` is active alongside
+classic branch protection: linear history is required, force-pushes and
+deletions are blocked, and one status check must pass. There is no review
+requirement, and the admin role bypasses all of it, so branch-per-change is
+still a convention rather than something you are physically stopped from
+skipping — but the remote does enforce something now.
+
+One trap worth knowing, because it has already cost a day: the required
+status check is identified by the **job name** in `.github/workflows/ci.yml`,
+not by the workflow or the file. Rename that job and the ruleset goes on
+waiting for a context nothing reports, so every pull request sits on a
+required check that is permanently "Expected — waiting for status to be
+reported" and never starts. It looks like a stuck runner and is not one.
+That is exactly what the Astro rebuild did when it renamed the job from
+`format, links, no build step` to `format, tests, build`. **If you rename
+the CI job, update the ruleset in the same change.**
 
 A custom domain is still unwired. The dependency advisories noted above are
 unresolved. And the rest of the site — the home index, starfield, the
