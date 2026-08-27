@@ -246,3 +246,430 @@ body.phosphor .link-card__domain {
     padding: 1rem 1.25rem 3rem;
   }
 }
+/* ---------------------------------------------------------
+   Pinboard tokens. Kept here rather than in style.css because
+   nothing outside this listing uses them: they are this page's
+   own vocabulary, the way starfield owns its own. The tint pairs
+   are faded emulsion, decoration on an aria-hidden window -- they
+   never carry meaning, so nothing is lost if they all read alike.
+   --------------------------------------------------------- */
+:root {
+  --card: #fdfaf0;
+  --card-edge: #e6d9bd;
+  --shadow: #3b2f1c;
+
+  --tint-a-1: #c9b8d6;
+  --tint-a-2: #efe2d2;
+  --tint-b-1: #a8c4c0;
+  --tint-b-2: #f0e6cf;
+  --tint-c-1: #e0b39a;
+  --tint-c-2: #f2e7d5;
+  --tint-d-1: #b7c2dc;
+  --tint-d-2: #ece4d6;
+  --tint-e-1: #d8c68f;
+  --tint-e-2: #efe5d4;
+}
+
+/* ---------------------------------------------------------
+   The pinboard
+   ---------------------------------------------------------
+   A board of keepsakes, not a list of rows. Every card's angle,
+   tint, fastener and window shape comes from a hash of its slug
+   (see index.astro) and arrives as an inline custom property, so
+   the board is stable across renders with nothing stored and no
+   client JavaScript.
+
+   Deliberately unlike "the wire", which is one narrow monospace
+   column printing in order: this is wide, scattered, and set in
+   the site's serif, because a keepsake is handled, not printed.
+   --------------------------------------------------------- */
+.pinboard {
+  max-width: 74rem;
+  margin: 0 auto;
+  padding: 2rem 2rem 4rem;
+}
+
+.pinboard__head {
+  margin: 0 0 2.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px dashed var(--line);
+}
+
+body.phosphor .pinboard__head {
+  border-bottom-color: var(--phosphor-line);
+}
+
+.pinboard__title {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1;
+  margin: 0 0 0.6rem;
+}
+
+.pinboard__sub {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-soft);
+  max-width: 48ch;
+  margin: 0 0 0.9rem;
+}
+
+body.phosphor .pinboard__sub {
+  color: var(--phosphor-dim);
+}
+
+/* The board surface: cork-ish speckle on paper, a faint grid in
+   phosphor mode. Both are one flat plane for the cards to sit on. */
+.board {
+  list-style: none;
+  margin: 0;
+  padding: 2rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 3rem 2rem;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background-color: color-mix(in srgb, var(--line) 16%, var(--paper));
+  background-image:
+    radial-gradient(
+      circle at 20% 30%,
+      color-mix(in srgb, var(--line) 55%, transparent) 0 1px,
+      transparent 1.5px
+    ),
+    radial-gradient(
+      circle at 70% 80%,
+      color-mix(in srgb, var(--rust) 22%, transparent) 0 1px,
+      transparent 1.5px
+    );
+  background-size:
+    13px 11px,
+    23px 19px;
+}
+
+body.phosphor .board {
+  border-color: var(--phosphor-line);
+  background-color: var(--phosphor-bg);
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--phosphor-line) 45%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--phosphor-line) 45%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 28px 28px;
+}
+
+.board__slot {
+  position: relative;
+}
+
+/* A hovered or focused card comes forward, so straightening it can
+   overlap its neighbours instead of shoving them. */
+.board__slot:hover,
+.board__slot:focus-within {
+  z-index: 2;
+}
+
+/* --------------------------------------------------------- the card */
+.keepsake {
+  display: flex;
+  flex-direction: column;
+  text-decoration: none;
+  color: inherit;
+  padding: 0.7rem 0.7rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  border-radius: 2px;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--shadow) 18%, transparent);
+  transform: rotate(calc(var(--tilt, 0deg) * var(--tilt-scale, 1)))
+    translateY(var(--nudge, 0px));
+  transition:
+    transform var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease;
+}
+
+body.phosphor .keepsake {
+  background: var(--phosphor-bg);
+  border-color: var(--phosphor-line);
+  box-shadow: none;
+}
+
+.keepsake:hover,
+.keepsake:focus-visible {
+  transform: rotate(0deg) translateY(calc(var(--nudge, 0px) - 5px));
+  box-shadow: 0 12px 22px color-mix(in srgb, var(--shadow) 26%, transparent);
+}
+
+body.phosphor .keepsake:hover,
+body.phosphor .keepsake:focus-visible {
+  border-color: var(--phosphor-fg);
+}
+
+.keepsake:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 3px;
+}
+
+body.phosphor .keepsake:focus-visible {
+  outline-color: var(--phosphor-fg);
+}
+
+/* Straightening on hover is a nice touch and a bad idea for anyone who
+   asked for less movement. They keep the shadow and the border as the
+   affordance; the board still reads as a board, because the tilt was
+   never an animation in the first place. */
+@media (prefers-reduced-motion: reduce) {
+  .keepsake:hover,
+  .keepsake:focus-visible {
+    transform: rotate(calc(var(--tilt, 0deg) * var(--tilt-scale, 1)))
+      translateY(var(--nudge, 0px));
+  }
+}
+
+/* ------------------------------------------------- the photo window */
+.keepsake__window {
+  position: relative;
+  display: block;
+  border-radius: 1px;
+  background-image:
+    repeating-linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--shadow) 7%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    radial-gradient(circle at 30% 25%, var(--tint-2) 0%, transparent 60%),
+    linear-gradient(160deg, var(--tint-1), var(--tint-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+body.phosphor .keepsake__window {
+  background-image:
+    repeating-linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--phosphor-fg) 6%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--phosphor-line) 80%, var(--phosphor-bg)),
+      var(--phosphor-bg)
+    );
+  box-shadow: inset 0 0 0 1px var(--phosphor-line);
+}
+
+.board__slot--square .keepsake__window {
+  aspect-ratio: 1 / 1;
+}
+
+.board__slot--tall .keepsake__window {
+  aspect-ratio: 4 / 5;
+}
+
+.board__slot--wide .keepsake__window {
+  aspect-ratio: 3 / 2;
+}
+
+/* The index number ghosted into the corner of the emulsion, like a
+   frame number. Decorative: the window is aria-hidden, and the title
+   and date underneath are real text. */
+.keepsake__num {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.35rem;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--card) 70%, transparent);
+}
+
+body.phosphor .keepsake__num {
+  color: color-mix(in srgb, var(--phosphor-fg) 30%, transparent);
+}
+
+/* ----------------------------------------------------- the caption */
+.keepsake__caption {
+  display: block;
+  padding: 0.85rem 0.2rem 0;
+}
+
+.keepsake__title {
+  display: block;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+body.phosphor .keepsake__title {
+  color: var(--phosphor-fg);
+}
+
+.keepsake:hover .keepsake__title,
+.keepsake:focus-visible .keepsake__title {
+  text-decoration: underline;
+  text-decoration-color: var(--rust);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+body.phosphor .keepsake:hover .keepsake__title,
+body.phosphor .keepsake:focus-visible .keepsake__title {
+  text-decoration-color: var(--phosphor-fg);
+}
+
+.keepsake__date {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+body.phosphor .keepsake__date {
+  color: var(--phosphor-dim);
+}
+
+.keepsake__scrawl {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0.6rem 0.2rem 0;
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+body.phosphor .keepsake__scrawl {
+  color: var(--phosphor-dim);
+}
+
+/* ---------------------------------------------------- the fasteners
+   Four ways a thing ends up on a board. Purely decorative, so the span
+   is aria-hidden and empty; which one a note gets is decided by its
+   slug and means nothing about the note. */
+.keepsake__fastener {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+}
+
+.keepsake--pin .keepsake__fastener {
+  top: -0.45rem;
+  left: 50%;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-left: -0.425rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      color-mix(in srgb, var(--card) 75%, transparent) 0 22%,
+      transparent 55%
+    ),
+    var(--rust);
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--shadow) 40%, transparent);
+}
+
+body.phosphor .keepsake--pin .keepsake__fastener {
+  background: var(--phosphor-fg);
+  box-shadow: 0 0 6px var(--phosphor-fg);
+}
+
+.keepsake--tape .keepsake__fastener {
+  top: -0.6rem;
+  left: -0.9rem;
+  width: 4.5rem;
+  height: 1.35rem;
+  transform: rotate(-24deg);
+  background: color-mix(in srgb, var(--card) 55%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--shadow) 12%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+.keepsake--washi .keepsake__fastener {
+  top: -0.55rem;
+  left: 50%;
+  width: 5.5rem;
+  height: 1.2rem;
+  margin-left: -2.75rem;
+  transform: rotate(2deg);
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--mint) 45%, transparent) 0 5px,
+    color-mix(in srgb, var(--card) 60%, transparent) 5px 10px
+  );
+}
+
+.keepsake--clip .keepsake__fastener {
+  top: -0.7rem;
+  right: 1.1rem;
+  width: 0.85rem;
+  height: 1.9rem;
+  border: 2px solid color-mix(in srgb, var(--ink-soft) 70%, transparent);
+  border-radius: 0.45rem;
+  border-bottom-color: transparent;
+}
+
+body.phosphor .keepsake--tape .keepsake__fastener,
+body.phosphor .keepsake--washi .keepsake__fastener {
+  background: color-mix(in srgb, var(--phosphor-line) 70%, transparent);
+  border-color: var(--phosphor-line);
+}
+
+body.phosphor .keepsake--clip .keepsake__fastener {
+  border-color: var(--phosphor-dim);
+  border-bottom-color: transparent;
+}
+
+/* --------------------------------------------------------- the tints */
+.keepsake--a {
+  --tint-1: var(--tint-a-1);
+  --tint-2: var(--tint-a-2);
+}
+
+.keepsake--b {
+  --tint-1: var(--tint-b-1);
+  --tint-2: var(--tint-b-2);
+}
+
+.keepsake--c {
+  --tint-1: var(--tint-c-1);
+  --tint-2: var(--tint-c-2);
+}
+
+.keepsake--d {
+  --tint-1: var(--tint-d-1);
+  --tint-2: var(--tint-d-2);
+}
+
+.keepsake--e {
+  --tint-1: var(--tint-e-1);
+  --tint-2: var(--tint-e-2);
+}
+
+@media (max-width: 40rem) {
+  .pinboard {
+    padding: 1rem 1.25rem 3rem;
+  }
+
+  /* One column, and most of the tilt taken out of it: a crooked card is
+     charming in a scatter and just looks broken in a stack. */
+  .board {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    padding: 1.5rem 1rem;
+    --tilt-scale: 0.35;
+  }
+}

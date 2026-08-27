@@ -107,6 +107,15 @@ that again before changing anything here:
 unchanged from the static era, still pure and still unit-tested — the one
 piece of the old implementation worth keeping.
 
+**The listing is a pinboard.** Notes are cards tacked to a board, not
+rows in a list. A card’s tilt, tint, fastener and window shape all come
+from an FNV-1a hash of its own slug, computed in `index.astro`, so the
+board is identical on every render with nothing stored and no client
+JavaScript. The “photo” in each card is CSS gradients on purpose: the
+listing has no `<img>` at all, `tests/integration.mjs` asserts that, and
+keeping it that way is what stops a reader’s pageview from fetching
+anything from someone else’s server.
+
 Two rules that are easy to break silently:
 
 - **An edit is not a republish.** `updateNote` never puts `slug` or

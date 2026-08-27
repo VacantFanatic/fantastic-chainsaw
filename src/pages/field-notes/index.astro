@@ -1,6 +1,15 @@
 ---
 // The listing. Server-rendered so a note appears the moment it's saved --
 // no build, no cache to bust, nothing to redeploy.
+//
+// It is a pinboard rather than a list: notes are keepsakes tacked to a
+// board, not rows in a table. Everything that makes one card differ from
+// the next -- its tilt, its tint, what holds it to the board, how tall its
+// window is -- is derived from the note's own slug, so a note always looks
+// the same on every render without anything being stored or randomised.
+// No client JavaScript, and deliberately no <img>: the emulsion in each
+// window is CSS, so a reader's pageview still fetches nothing from anyone
+// else's server.
 export const prerender = false;
 
 import Base from "../../layouts/Base.astro";
@@ -23,12 +32,47 @@ if (!isConfigured()) {
 }
 
 const count = notes.length;
+
+// FNV-1a. Not for security -- just a stable number per slug so the same
+// note gets the same crooked angle every time the page is served.
+function hash(text) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+const TINTS = ["a", "b", "c", "d", "e"];
+const FASTENERS = ["pin", "tape", "washi", "clip"];
+const WINDOWS = ["square", "tall", "wide"];
+
+function keepsake(slug) {
+  const h = hash(slug);
+  return {
+    // +/- 3 degrees. Enough to read as pinned by hand, not enough to
+    // make a wall of text feel seasick.
+    tilt: (((h % 121) / 120 - 0.5) * 6).toFixed(2),
+    nudge: (h >>> 7) % 14,
+    tint: TINTS[(h >>> 11) % TINTS.length],
+    fastener: FASTENERS[(h >>> 17) % FASTENERS.length],
+    window: WINDOWS[(h >>> 21) % WINDOWS.length],
+  };
+}
 ---
 
 <Base title="field notes — STATIC">
   <p class="back-link"><a href="/index.html">&larr; back to index</a></p>
-  <main class="directory">
-    <p class="directory__label">index of /field-notes/</p>
+  <main class="pinboard">
+    <header class="pinboard__head">
+      <h1 class="pinboard__title">field notes</h1>
+      <p class="pinboard__sub">
+        things worth keeping, pinned up as they happened. newest first.
+      </p>
+      <p class="directory__label">index of /field-notes/</p>
+    </header>
+
     {broken && <p class="field-notes__empty">{broken}</p>}
     {
       !broken && count === 0 && (
@@ -37,21 +81,34 @@ const count = notes.length;
     }
     {
       count > 0 && (
-        <ol class="directory__list">
-          {notes.map((note, i) => (
-            <li class="entry">
-              <a class="entry__link" href={`/field-notes/${note.slug}`}>
-                <span class="entry__num">
-                  {String(count - i).padStart(2, "0")}
-                </span>
-                <span class="entry__name">{note.title}</span>
-                <span class="entry__kind">
-                  [note / {humanDate(note.published_at)}]
-                </span>
-              </a>
-              <p class="entry__note">{note.excerpt}</p>
-            </li>
-          ))}
+        <ol class="board">
+          {notes.map((note, i) => {
+            const k = keepsake(note.slug);
+            const num = String(count - i).padStart(2, "0");
+            return (
+              <li
+                class={`board__slot board__slot--${k.window}`}
+                style={`--tilt:${k.tilt}deg;--nudge:${k.nudge}px`}
+              >
+                <a
+                  class={`keepsake keepsake--${k.tint} keepsake--${k.fastener}`}
+                  href={`/field-notes/${note.slug}`}
+                >
+                  <span class="keepsake__fastener" aria-hidden="true" />
+                  <span class="keepsake__window" aria-hidden="true">
+                    <span class="keepsake__num">{num}</span>
+                  </span>
+                  <span class="keepsake__caption">
+                    <span class="keepsake__title">{note.title}</span>
+                    <span class="keepsake__date">
+                      {humanDate(note.published_at)}
+                    </span>
+                  </span>
+                  <span class="keepsake__scrawl">{note.excerpt}</span>
+                </a>
+              </li>
+            );
+          })}
         </ol>
       )
     }
