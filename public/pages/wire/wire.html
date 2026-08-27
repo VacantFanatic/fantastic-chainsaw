@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>the wire — STATIC</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../css/style.css" />
+    <link rel="stylesheet" href="wire.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b0f0a'/%3E%3Crect x='3' y='3' width='4' height='4' fill='%2363e08a'/%3E%3Crect x='9' y='3' width='4' height='4' fill='%2363e08a'/%3E%3Crect x='3' y='9' width='4' height='4' fill='%2363e08a'/%3E%3Crect x='9' y='9' width='4' height='4' fill='%2363e08a'/%3E%3C/svg%3E"
+    />
+  </head>
+  <body class="page-wire">
+    <header class="wire-head">
+      <p class="wire-head__back">
+        <a href="../../index.html">&larr; back to index</a>
+      </p>
+      <h1 class="wire-head__title">the wire</h1>
+      <p class="wire-head__sub">
+        a teletype for other people's feeds. splice in an RSS or Atom URL below
+        — nothing is stored anywhere but your own browser.
+      </p>
+    </header>
+
+    <main class="wire">
+      <section class="wire__panel" aria-label="feed controls">
+        <form class="wire__add" id="add-feed-form">
+          <label for="feed-url">splice in a feed</label>
+          <div class="wire__add-row">
+            <input
+              id="feed-url"
+              type="url"
+              inputmode="url"
+              placeholder="https://example.com/feed.xml"
+              autocomplete="off"
+              required
+            />
+            <button class="key" type="submit">
+              <span class="key__legend">splice in</span>
+            </button>
+          </div>
+        </form>
+        <p class="wire__status" id="add-status" role="status"></p>
+
+        <ul class="wire__sources" id="sources-list"></ul>
+
+        <div class="wire__transport">
+          <button
+            class="key key--run"
+            id="run-key"
+            type="button"
+            aria-pressed="true"
+          >
+            <span class="key__legend" id="run-key-legend">stop</span>
+            <span class="key__sub" id="run-key-sub">running — medium</span>
+          </button>
+
+          <fieldset class="wire__tempo" id="tempo-group">
+            <legend>tempo</legend>
+            <label class="wire__tempo-opt">
+              <input type="radio" name="tempo" value="slow" />
+              <span>slow</span>
+            </label>
+            <label class="wire__tempo-opt">
+              <input type="radio" name="tempo" value="medium" checked />
+              <span>medium</span>
+            </label>
+            <label class="wire__tempo-opt">
+              <input type="radio" name="tempo" value="fast" />
+              <span>fast</span>
+            </label>
+          </fieldset>
+
+          <button class="key key--refresh" id="refresh-key" type="button">
+            <span class="key__legend">refresh</span>
+            <span class="key__sub" id="refresh-sub">now</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="wire__tape-wrap" aria-hidden="true">
+        <div class="wire__tape" id="tape">
+          <span class="wire__tape-track" id="tape-track"></span>
+        </div>
+      </section>
+
+      <section class="wire__feed" aria-label="headlines">
+        <p class="wire__empty" id="empty-state">
+          nothing on the wire yet. splice in a feed to start receiving.
+        </p>
+        <ol class="wire__headlines" id="headlines-list"></ol>
+      </section>
+    </main>
+
+    <script src="wire.js"></script>
+  </body>
+</html>

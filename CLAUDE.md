@@ -185,9 +185,10 @@ public/             the hand-written site, copied to dist/ untouched
   index.html        home page — the hand-ordered index of everything
   css/style.css     shared tokens + layout (paper/ink, phosphor mode)
   js/main.js        home page behavior (static strip, phosphor toggle)
-  pages/            starfield, character-generator — URLs unchanged
+  pages/            starfield, character-generator, wire — URLs unchanged
 src/
   lib/render.mjs    plain text -> HTML; pure, unit-tested, pre-dates Astro
+  lib/feed.mjs      RSS/Atom parsing for "the wire"; pure except fetchFeed
   lib/supabase.js   request-scoped clients + currentAdmin(); no service key
   lib/notes.js      all reads and writes for notes, in one place
   layouts/Base.astro
@@ -195,7 +196,7 @@ src/
   styles/           field-notes.css (hand-owned), admin.css
   pages/field-notes/  listing, [slug], feed.xml — all prerender:false
   pages/admin/      login + desk, gated server-side
-  pages/api/        auth.js, notes.js — JSON endpoints
+  pages/api/        auth.js, notes.js, feed.js — JSON endpoints
   pages/pages/      legacy URL redirects; see "Legacy URLs are promises"
 supabase/
   schema.sql        tables, RLS policies, is_admin(); run this first
@@ -220,6 +221,13 @@ NOTES.md            running review notes: known issues, open items
   `entry--placeholder` once it's real. A new static piece goes in
   `public/pages/` and needs no Astro route.
 - Keep `NOTES.md` honest — mark things fixed when they're fixed.
+- `public/pages/wire/` is the first use of `localStorage` anywhere in this
+  codebase — starfield keeps its state in memory only, and the character
+  generator deliberately uses URL-hash state instead. If a future piece
+  wants client-side persistence, that's the precedent to follow.
+- `src/lib/feed.mjs`'s RSS/Atom parsing is regex, not a real XML parser —
+  the second precedent (after `render.mjs`'s `parseOgTags`) for hand-
+  rolling markup extraction rather than adding an npm parsing dependency.
 
 ## Still open
 
