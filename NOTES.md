@@ -1313,3 +1313,29 @@ Open items: real-world feed diversity beyond what was hand-tested here
 bot `User-Agent`) will surface parser gaps the way the entity-decoding and
 numeric-entity bugs did -- expected, and the reason `feed.mjs` stayed a
 small, easily-patched module rather than something more clever.
+
+## Supabase database advisors (2026-08-27) — three fixed in SQL, one isn't SQL
+
+The project's security advisors flagged four things. `supabase/schema.sql`
+now answers three of them; re-run it in the SQL editor to apply.
+
+- **`function_search_path_mutable` on `public.touch_updated_at`** — fixed.
+  The trigger now pins `set search_path = ''`. It touches no objects, so
+  an empty path costs it nothing and removes the shadowing-schema risk.
+- **`anon`/`authenticated` can execute a `SECURITY DEFINER` function** —
+  fixed by moving, not by revoking. `is_admin()` now lives in a `private`
+  schema, which PostgREST does not expose, so there is no
+  `/rest/v1/rpc/is_admin` any more. Revoking `EXECUTE` in `public` was the
+  wrong fix: the RLS policies call it as the invoking role, so revoking
+  would have locked admins out of their own drafts. `EXECUTE` is granted
+  to `authenticated` only, and its `search_path` is pinned empty too (the
+  body already schema-qualifies `public.admins` and `auth.uid()`).
+- **Leaked password protection disabled** — still open, and not fixable
+  here: it's a project setting, not schema. Dashboard -> Authentication ->
+  Password protection -> enable "Prevent use of leaked passwords". Noted
+  in `schema.sql`'s setup comments alongside the "turn signups off" step,
+  which is the same kind of instruction.
+
+Re-running `schema.sql` against the live database is safe: the policies are
+dropped and recreated before the old `public.is_admin()` is dropped, so
+nothing references it at the moment it goes.

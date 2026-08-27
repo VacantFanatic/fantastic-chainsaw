@@ -32,9 +32,14 @@ create table if not exists public.notes (
 create index if not exists notes_published_idx
   on public.notes (status, published_at desc);
 
+-- search_path is pinned empty so the function cannot be hijacked by a
+-- role-local search_path pointing at a shadowing schema. It touches no
+-- objects, so it needs nothing on the path.
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
+security invoker
+set search_path = ''
 as $$
 begin
   new.updated_at = now();
@@ -58,19 +63,32 @@ create table if not exists public.admins (
   added_at timestamptz not null default now()
 );
 
--- security definer so the notes policies can consult this table without
+-- Not in public, and that is the point. Anything in public is published by
+-- PostgREST as /rest/v1/rpc/<name>, so a security definer function there is
+-- a callable endpoint for every anon and signed-in caller. This one is only
+-- ever meant to be consulted from inside a policy, so it lives in a schema
+-- the API does not expose.
+create schema if not exists private;
+
+-- security definer so the notes policies can consult admins without
 -- tripping over its own RLS, which would recurse.
-create or replace function public.is_admin()
+create or replace function private.is_admin()
 returns boolean
 language sql
 security definer
 stable
-set search_path = public
+set search_path = ''
 as $$
   select exists (
     select 1 from public.admins a where a.user_id = auth.uid()
   );
 $$;
+
+-- Default grants hand EXECUTE to public; take it back and hand it only to
+-- the role the policies actually run as.
+revoke all on function private.is_admin() from public, anon;
+grant usage on schema private to authenticated;
+grant execute on function private.is_admin() to authenticated;
 
 /* -------------------------------------------------------------- policies */
 
@@ -88,20 +106,24 @@ drop policy if exists "admins read every note" on public.notes;
 create policy "admins read every note"
   on public.notes for select
   to authenticated
-  using (public.is_admin());
+  using (private.is_admin());
 
 drop policy if exists "admins write notes" on public.notes;
 create policy "admins write notes"
   on public.notes for all
   to authenticated
-  using (public.is_admin())
-  with check (public.is_admin());
+  using (private.is_admin())
+  with check (private.is_admin());
 
 drop policy if exists "admins see their own row" on public.admins;
 create policy "admins see their own row"
   on public.admins for select
   to authenticated
   using (user_id = auth.uid());
+
+-- The old public copy, if this is a re-run against a database that predates
+-- the move. Dropped last, once nothing references it any more.
+drop function if exists public.is_admin();
 
 /* ------------------------------------------------------------------ setup */
 
@@ -114,3 +136,8 @@ create policy "admins see their own row"
 -- Then turn public signups off:
 --   Dashboard -> Authentication -> Sign In / Providers -> Email ->
 --   disable "Allow new users to sign up".
+--
+-- And turn leaked password protection on -- it is a project setting, not
+-- something this file can express:
+--   Dashboard -> Authentication -> Policies (Password protection) ->
+--   enable "Prevent use of leaked passwords".

@@ -199,7 +199,7 @@ src/
   pages/api/        auth.js, notes.js, feed.js — JSON endpoints
   pages/pages/      legacy URL redirects; see "Legacy URLs are promises"
 supabase/
-  schema.sql        tables, RLS policies, is_admin(); run this first
+  schema.sql        tables, RLS policies, private.is_admin(); run this first
   seed.sql          the three pre-Supabase notes
 netlify.toml        build command, publish dir, build-skip guard, headers
 netlify/should-deploy.mjs
