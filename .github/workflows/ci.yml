@@ -18,6 +18,10 @@ concurrency:
 
 jobs:
   check:
+    # This name is load-bearing. The `main` ruleset requires a status check
+    # by *context*, which is this string -- rename it here and the ruleset
+    # waits forever for a context nothing reports, leaving every PR on a
+    # required check that never starts. Rename both or neither.
     name: format, tests, build
     runs-on: ubuntu-latest
 
