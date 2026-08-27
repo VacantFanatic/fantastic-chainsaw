@@ -55,8 +55,11 @@ What still holds, and is still the point:
   byte for byte, still openable from disk, still with no runtime JS beyond
   what each piece brings itself.
 - **A reader downloads no framework.** Astro ships zero client JavaScript
-  by default and nothing here opts in. The only inline scripts on the whole
-  site are the two on `/admin`, which a reader never sees.
+  by default and no page opts into a framework's. The site has exactly
+  three scripts: the two on `/admin`, which a reader never sees, and the
+  pinboard's, which is the first the public side has ever shipped. It is
+  ~150 lines of hand-written vanilla JS, and the page is complete without
+  it -- see "How field notes work".
 
 What no longer holds, honestly:
 
@@ -106,6 +109,42 @@ that again before changing anything here:
 `src/lib/render.mjs` is the plain-text-to-HTML renderer carried over
 unchanged from the static era, still pure and still unit-tested — the one
 piece of the old implementation worth keeping.
+
+**The listing is a pinboard.** Notes are cards tacked to a board, not
+rows in a list, grouped into one band per year. A card’s tilt, tint,
+fastener and window shape all come from an FNV-1a hash of its own slug,
+computed in `index.astro`, so the board is identical on every render with
+nothing stored. How bleached a card is comes from its _date_ instead —
+that one is information, it is never the only signal, and the date is
+printed on every card in text.
+
+The “photo” in each card is CSS gradients on purpose: the listing has no
+`<img>` at all, `tests/integration.mjs` asserts that, and keeping it that
+way is what stops a reader’s pageview from fetching anything from someone
+else’s server. That assertion has already earned its keep — Astro escapes
+quotes and `&` in attribute values but leaves `<` alone, so repeating a
+note’s title into a `data-` attribute put a literal `<img` in the listing
+for a note titled `<img …>`. Inert inside quotes, and still not worth it.
+**Don’t repeat note text into an attribute.**
+
+**The pinboard is where the public side started shipping JavaScript.**
+That was a real line to cross, and it was crossed deliberately for one
+thing: rearranging the board is worth having and cannot be done in CSS.
+Three rules keep it honest.
+
+- **Everything works without it.** The cards are plain links, and the
+  board/contact-sheet switch is a checkbox and `:has()`, not a script.
+  `BoardScript.astro` only remembers which view you left it in, lets you
+  pick a card up by its fastener, and puts the board back.
+- **The fastener earns its role.** It renders as `aria-hidden`
+  decoration; the script drops that at the same moment it makes the
+  fastener a labelled `role="button"` with arrow-key nudging, so dragging
+  is never the only way to move a card.
+- **Nothing important lives on the back of a card.** Hovering turns a
+  card over, and the back is `aria-hidden` texture repeating the front,
+  because hover-only content is unreachable on touch. Under
+  `prefers-reduced-motion` there is no flip at all — the excerpt unclips
+  in place instead.
 
 Two rules that are easy to break silently:
 
@@ -192,7 +231,8 @@ src/
   lib/supabase.js   request-scoped clients + currentAdmin(); no service key
   lib/notes.js      all reads and writes for notes, in one place
   layouts/Base.astro
-  components/       the two admin scripts (conditional, so not inline)
+  components/       the two admin scripts + the pinboard's (conditional,
+                    so not inline)
   styles/           field-notes.css (hand-owned), admin.css
   pages/field-notes/  listing, [slug], feed.xml — all prerender:false
   pages/admin/      login + desk, gated server-side

@@ -246,3 +246,766 @@ body.phosphor .link-card__domain {
     padding: 1rem 1.25rem 3rem;
   }
 }
+/* ---------------------------------------------------------
+   Pinboard tokens. Kept here rather than in style.css because
+   nothing outside this listing uses them: they are this page's
+   own vocabulary, the way starfield owns its own. The tint pairs
+   are faded emulsion, decoration on an aria-hidden window -- they
+   never carry meaning, so nothing is lost if they all read alike.
+   --------------------------------------------------------- */
+:root {
+  --card: #fdfaf0;
+  --card-edge: #e6d9bd;
+  --shadow: #3b2f1c;
+
+  --tint-a-1: #c9b8d6;
+  --tint-a-2: #efe2d2;
+  --tint-b-1: #a8c4c0;
+  --tint-b-2: #f0e6cf;
+  --tint-c-1: #e0b39a;
+  --tint-c-2: #f2e7d5;
+  --tint-d-1: #b7c2dc;
+  --tint-d-2: #ece4d6;
+  --tint-e-1: #d8c68f;
+  --tint-e-2: #efe5d4;
+}
+
+/* ---------------------------------------------------------
+   The pinboard
+   ---------------------------------------------------------
+   A board of keepsakes, not a list of rows. Every card's angle,
+   tint, fastener and window shape comes from a hash of its slug
+   (see index.astro) and arrives as an inline custom property, so
+   the board is stable across renders with nothing stored.
+
+   How faded a card is comes from its date rather than its slug,
+   because that one carries meaning: the board really does bleach
+   towards the back. Never the only signal -- the date is printed
+   on every card in text.
+
+   Deliberately unlike "the wire", which is one narrow monospace
+   column printing in order: this is wide, scattered, and set in
+   the site's serif, because a keepsake is handled, not printed.
+   --------------------------------------------------------- */
+.pinboard {
+  max-width: 74rem;
+  margin: 0 auto;
+  padding: 2rem 2rem 4rem;
+}
+
+.pinboard__head {
+  margin: 0 0 2.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px dashed var(--line);
+}
+
+body.phosphor .pinboard__head {
+  border-bottom-color: var(--phosphor-line);
+}
+
+.pinboard__title {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 3rem);
+  line-height: 1;
+  margin: 0 0 0.6rem;
+}
+
+.pinboard__sub {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--ink-soft);
+  max-width: 48ch;
+  margin: 0 0 0.9rem;
+}
+
+body.phosphor .pinboard__sub {
+  color: var(--phosphor-dim);
+}
+
+/* ------------------------------------------------- the view switch
+   A checkbox and :has(), so switching between the scattered board and
+   the contact sheet needs no JavaScript. The script only remembers
+   which way it was left. */
+.pinboard__controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.view-switch__input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.view-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+body.phosphor .view-switch {
+  color: var(--phosphor-dim);
+}
+
+.view-switch__dot {
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 1px solid var(--ink-soft);
+  border-radius: 1px;
+}
+
+.view-switch__input:checked + .view-switch .view-switch__dot {
+  background: var(--rust);
+  border-color: var(--rust);
+}
+
+body.phosphor .view-switch__input:checked + .view-switch .view-switch__dot {
+  background: var(--phosphor-fg);
+  border-color: var(--phosphor-fg);
+}
+
+/* The checkbox is off-screen, so the label has to carry its focus ring. */
+.view-switch__input:focus-visible + .view-switch {
+  outline: 2px solid var(--rust);
+  outline-offset: 3px;
+}
+
+body.phosphor .view-switch__input:focus-visible + .view-switch {
+  outline-color: var(--phosphor-fg);
+}
+
+/* Hidden until the script confirms there is something to tidy.
+
+   Its label is --ink rather than the --rust every other control on the
+   site uses, because --rust on --paper is 4.33:1 -- under AA for text
+   this size. The rust stays on the border, which is free to be faint,
+   the same split that keeps --phosphor-line away from --phosphor-dim.
+   See NOTES.md: the older rust links have the same problem and this is
+   not the change that fixes them. */
+.pinboard__tidy {
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+}
+
+body.phosphor .pinboard__tidy {
+  color: var(--phosphor-fg);
+  border-color: var(--phosphor-line);
+}
+
+.pinboard__tidy:hover {
+  border-color: var(--rust);
+}
+
+.pinboard__tidy:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+body.phosphor .pinboard__tidy:focus-visible {
+  outline-color: var(--phosphor-fg);
+}
+
+/* ----------------------------------------------------- the strata
+   One band per year. The rule trailing off after the label is the
+   same dashed-seam idiom the rest of the site uses for structure. */
+.stratum {
+  margin: 0 0 2.5rem;
+}
+
+.stratum__year {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  color: var(--ink-soft);
+  margin: 0 0 0.75rem;
+}
+
+body.phosphor .stratum__year {
+  color: var(--phosphor-dim);
+}
+
+.stratum__year::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+body.phosphor .stratum__year::after {
+  background: var(--phosphor-line);
+}
+
+/* The board surface: cork-ish speckle on paper, a faint grid in
+   phosphor mode. Both are one flat plane for the cards to sit on. */
+.board {
+  list-style: none;
+  margin: 0;
+  padding: 2rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 3rem 2rem;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background-color: color-mix(in srgb, var(--line) 16%, var(--paper));
+  background-image:
+    radial-gradient(
+      circle at 20% 30%,
+      color-mix(in srgb, var(--line) 55%, transparent) 0 1px,
+      transparent 1.5px
+    ),
+    radial-gradient(
+      circle at 70% 80%,
+      color-mix(in srgb, var(--rust) 22%, transparent) 0 1px,
+      transparent 1.5px
+    );
+  background-size:
+    13px 11px,
+    23px 19px;
+}
+
+body.phosphor .board {
+  border-color: var(--phosphor-line);
+  background-color: var(--phosphor-bg);
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--phosphor-line) 45%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--phosphor-line) 45%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 28px 28px;
+}
+
+.board__slot {
+  position: relative;
+}
+
+/* A hovered or focused card comes forward, so straightening it can
+   overlap its neighbours instead of shoving them. */
+.board__slot:hover,
+.board__slot:focus-within {
+  z-index: 2;
+}
+
+/* --------------------------------------------------------- the card */
+.keepsake {
+  position: relative;
+  padding: 0.7rem 0.7rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  border-radius: 2px;
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--shadow) 18%, transparent);
+  perspective: 900px;
+  /* --dx/--dy are where the reader moved this card to, if they did. */
+  transform: translate(var(--dx, 0px), var(--dy, 0px))
+    rotate(calc(var(--tilt, 0deg) * var(--tilt-scale, 1)))
+    translateY(var(--nudge, 0px));
+  transition:
+    transform var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease;
+}
+
+body.phosphor .keepsake {
+  background: var(--phosphor-bg);
+  border-color: var(--phosphor-line);
+  box-shadow: none;
+}
+
+.keepsake:hover,
+.keepsake:has(.keepsake__link:focus-visible) {
+  transform: translate(var(--dx, 0px), var(--dy, 0px)) rotate(0deg)
+    translateY(calc(var(--nudge, 0px) - 5px));
+  box-shadow: 0 12px 22px color-mix(in srgb, var(--shadow) 26%, transparent);
+}
+
+body.phosphor .keepsake:hover,
+body.phosphor .keepsake:has(.keepsake__link:focus-visible) {
+  border-color: var(--phosphor-fg);
+}
+
+/* Being carried: keep the tilt, drop the transition so the card tracks
+   the pointer exactly, and lift it above everything else. */
+.keepsake.is-held {
+  z-index: 3;
+  transition: none;
+  transform: translate(var(--dx, 0px), var(--dy, 0px))
+    rotate(calc(var(--tilt, 0deg) * var(--tilt-scale, 1)))
+    translateY(calc(var(--nudge, 0px) - 8px));
+  box-shadow: 0 18px 30px color-mix(in srgb, var(--shadow) 32%, transparent);
+}
+
+.keepsake__link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+}
+
+.keepsake__link:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 3px;
+}
+
+body.phosphor .keepsake__link:focus-visible {
+  outline-color: var(--phosphor-fg);
+}
+
+/* --------------------------------------------- turning it over
+   Hovering or focusing a card turns it over to its back, where the
+   excerpt runs unclipped. The back says nothing the front doesn't,
+   so it is aria-hidden and nothing is lost if it never appears. */
+.keepsake__faces {
+  position: relative;
+  display: block;
+  transform-style: preserve-3d;
+  transition: transform 0.5s ease;
+}
+
+.keepsake:hover .keepsake__faces,
+.keepsake__link:focus-visible .keepsake__faces {
+  transform: rotateY(180deg);
+}
+
+.keepsake__face {
+  display: block;
+  backface-visibility: hidden;
+}
+
+.keepsake__face--back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 0.6rem;
+  transform: rotateY(180deg);
+  background: color-mix(in srgb, var(--line) 22%, var(--card));
+  border-radius: 1px;
+}
+
+body.phosphor .keepsake__face--back {
+  background: color-mix(in srgb, var(--phosphor-line) 30%, var(--phosphor-bg));
+}
+
+.keepsake__stamp {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--rust);
+}
+
+body.phosphor .keepsake__stamp {
+  color: var(--phosphor-fg);
+}
+
+.keepsake__reverse {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--ink);
+  overflow: hidden;
+}
+
+body.phosphor .keepsake__reverse {
+  color: var(--phosphor-fg);
+}
+
+/* ------------------------------------------------- the photo window */
+.keepsake__window {
+  position: relative;
+  display: block;
+  border-radius: 1px;
+  /* The bleach. Only the emulsion fades -- text never does. */
+  filter: saturate(calc(1 - 0.55 * var(--bleach, 0)))
+    opacity(calc(1 - 0.25 * var(--bleach, 0)));
+  background-image:
+    repeating-linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--shadow) 7%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    radial-gradient(circle at 30% 25%, var(--tint-2) 0%, transparent 60%),
+    linear-gradient(160deg, var(--tint-1), var(--tint-2));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--shadow) 12%, transparent);
+}
+
+body.phosphor .keepsake__window {
+  background-image:
+    repeating-linear-gradient(
+      110deg,
+      color-mix(in srgb, var(--phosphor-fg) 6%, transparent) 0 1px,
+      transparent 1px 4px
+    ),
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--phosphor-line) 80%, var(--phosphor-bg)),
+      var(--phosphor-bg)
+    );
+  box-shadow: inset 0 0 0 1px var(--phosphor-line);
+}
+
+.board__slot--square .keepsake__window {
+  aspect-ratio: 1 / 1;
+}
+
+.board__slot--tall .keepsake__window {
+  aspect-ratio: 4 / 5;
+}
+
+.board__slot--wide .keepsake__window {
+  aspect-ratio: 3 / 2;
+}
+
+/* The index number ghosted into the corner of the emulsion, like a
+   frame number. Decorative: the window is aria-hidden, and the title
+   and date underneath are real text. */
+.keepsake__num {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 0.35rem;
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+  color: color-mix(in srgb, var(--card) 70%, transparent);
+}
+
+body.phosphor .keepsake__num {
+  color: color-mix(in srgb, var(--phosphor-fg) 30%, transparent);
+}
+
+/* ----------------------------------------------------- the caption */
+.keepsake__caption {
+  display: block;
+  padding: 0.85rem 0.2rem 0;
+}
+
+.keepsake__title {
+  display: block;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.1rem;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+body.phosphor .keepsake__title {
+  color: var(--phosphor-fg);
+}
+
+.keepsake:hover .keepsake__title,
+.keepsake__link:focus-visible .keepsake__title {
+  text-decoration: underline;
+  text-decoration-color: var(--rust);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+body.phosphor .keepsake:hover .keepsake__title,
+body.phosphor .keepsake__link:focus-visible .keepsake__title {
+  text-decoration-color: var(--phosphor-fg);
+}
+
+.keepsake__date {
+  display: block;
+  margin-top: 0.35rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+}
+
+body.phosphor .keepsake__date {
+  color: var(--phosphor-dim);
+}
+
+.keepsake__scrawl {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0.6rem 0.2rem 0;
+  font-family: var(--serif);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+body.phosphor .keepsake__scrawl {
+  color: var(--phosphor-dim);
+}
+
+/* ---------------------------------------------------- the fasteners
+   Three ways a thing ends up on a board. Decoration until the script
+   turns each one into a handle you can pick the card up by; which one
+   a note gets is decided by its slug and means nothing about the note.
+
+   Tape used to be among them and deliberately isn't any more: "the
+   wire" tapes its slips down, and two pages reaching for the same
+   strip of masking tape made them read as one idea. A drawing pin, a
+   paperclip and a set of album corners are all things you keep
+   photographs with, which is the register this page wants anyway. */
+.keepsake__fastener {
+  position: absolute;
+  z-index: 1;
+  display: block;
+  pointer-events: none;
+}
+
+/* Only once it actually does something. */
+.keepsake__fastener--handle {
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.keepsake__fastener--handle:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 3px;
+}
+
+body.phosphor .keepsake__fastener--handle:focus-visible {
+  outline-color: var(--phosphor-fg);
+}
+
+.is-held .keepsake__fastener--handle {
+  cursor: grabbing;
+}
+
+.keepsake--pin .keepsake__fastener {
+  top: -0.45rem;
+  left: 50%;
+  width: 0.85rem;
+  height: 0.85rem;
+  margin-left: -0.425rem;
+  border-radius: 50%;
+  background:
+    radial-gradient(
+      circle at 35% 30%,
+      color-mix(in srgb, var(--card) 75%, transparent) 0 22%,
+      transparent 55%
+    ),
+    var(--rust);
+  box-shadow: 0 2px 4px color-mix(in srgb, var(--shadow) 40%, transparent);
+}
+
+body.phosphor .keepsake--pin .keepsake__fastener {
+  background: var(--phosphor-fg);
+  box-shadow: 0 0 6px var(--phosphor-fg);
+}
+
+.keepsake--clip .keepsake__fastener {
+  top: -0.7rem;
+  right: 1.1rem;
+  width: 0.85rem;
+  height: 1.9rem;
+  border: 2px solid color-mix(in srgb, var(--ink-soft) 70%, transparent);
+  border-radius: 0.45rem;
+  border-bottom-color: transparent;
+}
+
+body.phosphor .keepsake--clip .keepsake__fastener {
+  border-color: var(--phosphor-dim);
+  border-bottom-color: transparent;
+}
+
+/* Album corners: two folded triangles holding the top edge of the
+   window, the way a photograph sits in an album page. */
+.keepsake--corner .keepsake__fastener {
+  top: 0.7rem;
+  right: 0.7rem;
+  left: 0.7rem;
+  height: 1.5rem;
+}
+
+.keepsake--corner .keepsake__fastener::before,
+.keepsake--corner .keepsake__fastener::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: color-mix(in srgb, var(--shadow) 45%, transparent);
+}
+
+.keepsake--corner .keepsake__fastener::before {
+  left: 0;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.keepsake--corner .keepsake__fastener::after {
+  right: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+body.phosphor .keepsake--corner .keepsake__fastener::before,
+body.phosphor .keepsake--corner .keepsake__fastener::after {
+  background: var(--phosphor-line);
+}
+
+/* --------------------------------------------------------- the tints */
+.keepsake--a {
+  --tint-1: var(--tint-a-1);
+  --tint-2: var(--tint-a-2);
+}
+
+.keepsake--b {
+  --tint-1: var(--tint-b-1);
+  --tint-2: var(--tint-b-2);
+}
+
+.keepsake--c {
+  --tint-1: var(--tint-c-1);
+  --tint-2: var(--tint-c-2);
+}
+
+.keepsake--d {
+  --tint-1: var(--tint-d-1);
+  --tint-2: var(--tint-d-2);
+}
+
+.keepsake--e {
+  --tint-1: var(--tint-e-1);
+  --tint-2: var(--tint-e-2);
+}
+
+/* ------------------------------------------------- the contact sheet
+   The same photographs laid out as a proof sheet: square, square-on,
+   evenly spaced, numbered. It is the board's second gear and the way
+   to scan the whole run quickly if the scatter is hard work. Cards
+   stay where they were pinned underneath -- the offsets are ignored
+   here, not thrown away. */
+.pinboard:has(.view-switch__input:checked) .board {
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  background-image: none;
+  --tilt-scale: 0;
+}
+
+.pinboard:has(.view-switch__input:checked) .board__slot {
+  --dx: 0px;
+  --dy: 0px;
+  --nudge: 0px;
+}
+
+.pinboard:has(.view-switch__input:checked) .keepsake {
+  padding: 0.35rem;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.pinboard:has(.view-switch__input:checked) .keepsake:hover {
+  box-shadow: 0 6px 14px color-mix(in srgb, var(--shadow) 22%, transparent);
+}
+
+/* Square in the sheet whatever shape the card is on the board. */
+.pinboard:has(.view-switch__input:checked) .board__slot--tall .keepsake__window,
+.pinboard:has(.view-switch__input:checked)
+  .board__slot--wide
+  .keepsake__window {
+  aspect-ratio: 1 / 1;
+}
+
+.pinboard:has(.view-switch__input:checked) .keepsake__num {
+  font-size: 1.4rem;
+}
+
+.pinboard:has(.view-switch__input:checked) .keepsake__title {
+  font-size: 0.8rem;
+}
+
+.pinboard:has(.view-switch__input:checked) .keepsake__caption {
+  padding-top: 0.5rem;
+}
+
+/* No turning over, no scrawl, no fasteners: a proof sheet is flat. */
+.pinboard:has(.view-switch__input:checked) .keepsake__faces {
+  transform: none;
+}
+
+.pinboard:has(.view-switch__input:checked) .keepsake__face--back,
+.pinboard:has(.view-switch__input:checked) .keepsake__scrawl,
+.pinboard:has(.view-switch__input:checked) .keepsake__fastener {
+  display: none;
+}
+
+/* --------------------------------------------------- reduced motion
+   No flip and no straightening for anyone who asked for less
+   movement. They get the other half of the same idea instead: the
+   excerpt unclips in place on hover, so the card still opens up, it
+   just doesn't spin to do it. The tilt was never an animation, so the
+   board still reads as a board. */
+@media (prefers-reduced-motion: reduce) {
+  .keepsake:hover,
+  .keepsake:has(.keepsake__link:focus-visible) {
+    transform: translate(var(--dx, 0px), var(--dy, 0px))
+      rotate(calc(var(--tilt, 0deg) * var(--tilt-scale, 1)))
+      translateY(var(--nudge, 0px));
+  }
+
+  .keepsake:hover .keepsake__faces,
+  .keepsake__link:focus-visible .keepsake__faces {
+    transform: none;
+  }
+
+  .keepsake__face--back {
+    display: none;
+  }
+
+  .keepsake:hover .keepsake__scrawl,
+  .keepsake__link:focus-visible .keepsake__scrawl {
+    -webkit-line-clamp: unset;
+  }
+}
+
+@media (max-width: 40rem) {
+  .pinboard {
+    padding: 1rem 1.25rem 3rem;
+  }
+
+  /* One column, and most of the tilt taken out of it: a crooked card is
+     charming in a scatter and just looks broken in a stack. */
+  .board {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    padding: 1.5rem 1rem;
+    --tilt-scale: 0.35;
+  }
+
+  .pinboard:has(.view-switch__input:checked) .board {
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+  }
+}
