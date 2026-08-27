@@ -378,6 +378,7 @@ body.phosphor .board {
 
 /* --------------------------------------------------------- the card */
 .keepsake {
+  position: relative;
   display: flex;
   flex-direction: column;
   text-decoration: none;
@@ -556,11 +557,18 @@ body.phosphor .keepsake__scrawl {
 }
 
 /* ---------------------------------------------------- the fasteners
-   Four ways a thing ends up on a board. Purely decorative, so the span
-   is aria-hidden and empty; which one a note gets is decided by its
-   slug and means nothing about the note. */
+   Three ways a thing ends up on a board. Purely decorative, so the span
+   is aria-hidden and empty; which one a note gets is decided by its slug
+   and means nothing about the note.
+
+   Tape used to be one of them and deliberately isn't any more: "the
+   wire" tapes its slips down, and two pages reaching for the same strip
+   of masking tape made them read as one idea. A drawing pin, a paperclip
+   and a set of album corners are all things you keep photographs with,
+   which is the register this page wants anyway. */
 .keepsake__fastener {
   position: absolute;
+  z-index: 1;
   display: block;
   pointer-events: none;
 }
@@ -587,31 +595,6 @@ body.phosphor .keepsake--pin .keepsake__fastener {
   box-shadow: 0 0 6px var(--phosphor-fg);
 }
 
-.keepsake--tape .keepsake__fastener {
-  top: -0.6rem;
-  left: -0.9rem;
-  width: 4.5rem;
-  height: 1.35rem;
-  transform: rotate(-24deg);
-  background: color-mix(in srgb, var(--card) 55%, transparent);
-  border-left: 1px solid color-mix(in srgb, var(--shadow) 12%, transparent);
-  border-right: 1px solid color-mix(in srgb, var(--shadow) 12%, transparent);
-}
-
-.keepsake--washi .keepsake__fastener {
-  top: -0.55rem;
-  left: 50%;
-  width: 5.5rem;
-  height: 1.2rem;
-  margin-left: -2.75rem;
-  transform: rotate(2deg);
-  background: repeating-linear-gradient(
-    45deg,
-    color-mix(in srgb, var(--mint) 45%, transparent) 0 5px,
-    color-mix(in srgb, var(--card) 60%, transparent) 5px 10px
-  );
-}
-
 .keepsake--clip .keepsake__fastener {
   top: -0.7rem;
   right: 1.1rem;
@@ -622,15 +605,45 @@ body.phosphor .keepsake--pin .keepsake__fastener {
   border-bottom-color: transparent;
 }
 
-body.phosphor .keepsake--tape .keepsake__fastener,
-body.phosphor .keepsake--washi .keepsake__fastener {
-  background: color-mix(in srgb, var(--phosphor-line) 70%, transparent);
-  border-color: var(--phosphor-line);
-}
-
 body.phosphor .keepsake--clip .keepsake__fastener {
   border-color: var(--phosphor-dim);
   border-bottom-color: transparent;
+}
+
+/* Album corners: two folded triangles holding the top edge of the
+   window, the way a photograph sits in an album page. The span covers
+   the window rather than sitting above the card, so the corners land on
+   the emulsion instead of floating in space. */
+.keepsake--corner .keepsake__fastener {
+  top: 0.7rem;
+  right: 0.7rem;
+  left: 0.7rem;
+  height: 1.5rem;
+}
+
+.keepsake--corner .keepsake__fastener::before,
+.keepsake--corner .keepsake__fastener::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  background: color-mix(in srgb, var(--shadow) 45%, transparent);
+}
+
+.keepsake--corner .keepsake__fastener::before {
+  left: 0;
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+.keepsake--corner .keepsake__fastener::after {
+  right: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+body.phosphor .keepsake--corner .keepsake__fastener::before,
+body.phosphor .keepsake--corner .keepsake__fastener::after {
+  background: var(--phosphor-line);
 }
 
 /* --------------------------------------------------------- the tints */
