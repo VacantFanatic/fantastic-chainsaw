@@ -1314,10 +1314,11 @@ bot `User-Agent`) will surface parser gaps the way the entity-decoding and
 numeric-entity bugs did -- expected, and the reason `feed.mjs` stayed a
 small, easily-patched module rather than something more clever.
 
-## Supabase database advisors (2026-08-27) — three fixed in SQL, one isn't SQL
+## Supabase database advisors (2026-08-27) — five fixed in SQL, one isn't SQL
 
-The project's security advisors flagged four things. `supabase/schema.sql`
-now answers three of them; re-run it in the SQL editor to apply.
+The security advisors flagged four things and the performance advisors two
+more. `supabase/schema.sql` now answers five of the six; re-run it in the
+SQL editor to apply.
 
 - **`function_search_path_mutable` on `public.touch_updated_at`** — fixed.
   The trigger now pins `set search_path = ''`. It touches no objects, so
@@ -1339,3 +1340,39 @@ now answers three of them; re-run it in the SQL editor to apply.
 Re-running `schema.sql` against the live database is safe: the policies are
 dropped and recreated before the old `public.is_admin()` is dropped, so
 nothing references it at the moment it goes.
+
+The two performance advisors are answered in the same pass:
+
+- **`auth_rls_initplan` on `public.admins`** — the policy called a bare
+  `auth.uid()`, which Postgres re-evaluates once per row. Wrapped as
+  `(select auth.uid())` it is hoisted to an InitPlan and runs once per
+  query. The same wrapping is applied to every `private.is_admin()` call
+  in the notes policies. The linter doesn't flag those (it only looks for
+  `auth.*` and `current_setting`), but the mechanism is identical and the
+  notes table is the one that actually gets scanned.
+- **`multiple_permissive_policies` on `public.notes`** — an authenticated
+  `SELECT` matched three permissive policies, all of which Postgres OR-s
+  and evaluates on every row: the world-readable one, `admins read every
+note`, and `admins write notes`, which was `for all` and so counted as a
+  SELECT policy too. There is now exactly one policy per role per action:
+  one SELECT for `anon`, one SELECT for `authenticated` carrying both
+  halves of the rule (`status = 'published' or (select
+private.is_admin())`), and separate INSERT/UPDATE/DELETE policies for
+  admins. `admins read every note` turned out to be entirely redundant
+  with the `for all` policy that already granted admins read access.
+
+None of this changes who can see or do what. That was checked rather than
+assumed: `schema.sql` was applied to a throwaway Postgres 16 in Docker,
+with small stand-ins for `auth.users`, `auth.uid()` and the `anon` /
+`authenticated` roles, and the resulting policies exercised directly --
+anon sees one note, a signed-in non-admin sees the same one, an admin sees
+both, a non-admin's insert is refused by RLS and its update matches zero
+rows, an admin's insert and update succeed, a non-admin sees no rows in
+`admins`, `public.is_admin` no longer exists, and `pg_policies` shows one
+policy per role/action. `explain` confirms the InitPlan. The file also
+applies cleanly a second time over its own output.
+
+The unit and integration suites do not cover any of this: `fake-supabase`
+reimplements the RLS rules in JavaScript rather than running the SQL, so
+it will happily keep passing whatever `schema.sql` says. Worth remembering
+before trusting a green CI on a schema change.

@@ -95,31 +95,63 @@ grant execute on function private.is_admin() to authenticated;
 alter table public.notes enable row level security;
 alter table public.admins enable row level security;
 
+-- One SELECT policy per role, deliberately. Permissive policies covering
+-- the same role and action are OR-ed, and Postgres evaluates every one of
+-- them against every row -- so the old "public reads published / admins
+-- also read drafts" split cost an extra policy evaluation per row on every
+-- authenticated read. The same rule states fine as one predicate per role.
 drop policy if exists "published notes are world readable" on public.notes;
-create policy "published notes are world readable"
+drop policy if exists "admins read every note" on public.notes;
+drop policy if exists "admins write notes" on public.notes;
+
+drop policy if exists "signed-out readers see published notes" on public.notes;
+create policy "signed-out readers see published notes"
   on public.notes for select
+  to anon
   using (status = 'published');
 
--- Admins additionally see drafts (an unpublished note is a draft, not a
--- deletion -- taking a note down is reversible).
-drop policy if exists "admins read every note" on public.notes;
-create policy "admins read every note"
+-- Being signed in still grants nothing on its own: a non-admin sees exactly
+-- what anon sees. Admins additionally see drafts, because an unpublished
+-- note is a draft, not a deletion -- taking a note down is reversible.
+drop policy if exists "signed-in readers see published, admins see drafts" on public.notes;
+create policy "signed-in readers see published, admins see drafts"
   on public.notes for select
   to authenticated
-  using (private.is_admin());
+  using (status = 'published' or (select private.is_admin()));
 
-drop policy if exists "admins write notes" on public.notes;
-create policy "admins write notes"
-  on public.notes for all
+-- Split by action rather than one `for all` policy, because `for all`
+-- counts as a SELECT policy too and would put a second one straight back
+-- onto every authenticated read.
+drop policy if exists "admins insert notes" on public.notes;
+create policy "admins insert notes"
+  on public.notes for insert
   to authenticated
-  using (private.is_admin())
-  with check (private.is_admin());
+  with check ((select private.is_admin()));
 
+drop policy if exists "admins update notes" on public.notes;
+create policy "admins update notes"
+  on public.notes for update
+  to authenticated
+  using ((select private.is_admin()))
+  with check ((select private.is_admin()));
+
+-- Nothing in the app deletes a note -- unpublishing sets status to draft --
+-- but the old `for all` policy allowed it, and this is a performance fix,
+-- not the place to quietly take a capability away.
+drop policy if exists "admins delete notes" on public.notes;
+create policy "admins delete notes"
+  on public.notes for delete
+  to authenticated
+  using ((select private.is_admin()));
+
+-- `(select auth.uid())`, not a bare `auth.uid()`: wrapped in a sub-select
+-- it is hoisted to an InitPlan and evaluated once per query instead of once
+-- per row. Same reason for the `(select private.is_admin())` calls above.
 drop policy if exists "admins see their own row" on public.admins;
 create policy "admins see their own row"
   on public.admins for select
   to authenticated
-  using (user_id = auth.uid());
+  using (user_id = (select auth.uid()));
 
 -- The old public copy, if this is a re-run against a database that predates
 -- the move. Dropped last, once nothing references it any more.
