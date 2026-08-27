@@ -1197,3 +1197,119 @@ reader.
 Open items: the Supabase project itself has to be created and seeded before
 any of this runs, and none of it has been exercised against a real Supabase
 instance -- only against the fake. The first real sign-in is the test.
+
+## New piece: "the wire"
+
+Added 2026-08-27 as entry `04` in the index: `public/pages/wire/`, plus
+`src/lib/feed.mjs` and `src/pages/api/feed.js`. Fills the `entry--placeholder`
+slot that was reserved for "whatever gets built next." An RSS/Atom
+aggregator styled as a teletype/ticker -- splice in a feed, watch the
+headlines print past. Two decisions were locked before any code was
+written: the tactile metaphor is teletype/ticker, not a dial or a
+card-flip, and subscriptions live client-side only, in `localStorage` --
+no database, no accounts, no cross-device sync. That second choice is
+what keeps this a toy in the same register as starfield and the character
+generator, rather than a second CMS-shaped build.
+
+Fetching arbitrary third-party feed XML from a browser hits CORS on most
+real feeds, so `src/pages/api/feed.js` exists as a small stateless proxy
+-- the one route in `src/pages/api/` with no auth, no cookies, and no
+Supabase, because it reads no database and writes nothing. It reuses
+`RenderError`, `isFetchableUrl`, and `makeExcerpt` straight from
+`render.mjs` rather than redefining them, and duplicates the two helpers
+that are module-private there (`decodeHtmlEntities`, a capped-body-read)
+-- the same "small helper, small duplication" call already made for the
+per-route `json()` responses across this codebase.
+
+Deliberate choices worth remembering:
+
+- **Regex, not a real XML parser**, in `src/lib/feed.mjs` -- the second
+  precedent, after `render.mjs`'s `parseOgTags`, for hand-rolling markup
+  extraction rather than adding an npm dependency for the one part of the
+  site that isn't supposed to need one. It handles both RSS 2.0 and Atom,
+  including Atom's attribute-based `<link href="...">` (RSS's is a plain
+  text node) and its multiple, differently-`rel`'d `<link>` elements. RSS
+  1.0/RDF is detected and explicitly refused rather than silently
+  returning nothing -- real feeds are overwhelmingly one of the other two.
+- **Entities decode before tags strip, not after.** The first version had
+  this backwards and it went unnoticed by every test, because the test
+  fixtures happened to use literal `<b>` rather than the entity-escaped
+  `&lt;b&gt;` real feeds actually send. Caught only by fetching a real
+  feed by hand during verification, which is exactly why that step
+  wasn't skipped even though the unit tests were green.
+- **Numeric HTML entities, not just the five named ones.** A live NASA
+  feed surfaced `&#8217;` (a right single quote) rendering as literal
+  text mid-sentence -- `render.mjs`'s `parseOgTags` never needed numeric
+  refs because OG tags rarely carry them, but RSS/Atom feeds lean on them
+  constantly for smart quotes and dashes. Added `&#NNN;`/`&#xHHH;`
+  decoding via `String.fromCodePoint` and a regression test built from
+  the actual failing case.
+- **`fetchFeed` throws on failure; `fetchLinkPreview` returns null on
+  failure.** Same shape, opposite failure behaviour, and both are
+  correct for what calls them: a broken link preview silently degrades
+  to a plain link inside a note nobody else depends on, but the wire's
+  UI needs to know _which_ subscribed feed broke so it can show that
+  feed's own "no signal" state without discarding the others.
+- **`public/pages/wire/` is the first use of `localStorage` anywhere on
+  this site.** Starfield keeps everything in memory; the character
+  generator deliberately uses URL-hash state instead, on purpose, so a
+  link reproduces an exact character. Neither precedent fit a feed list
+  meant to survive a reload with no link to carry it. Schema is two
+  keys: `static:wire:feeds` (the subscription list -- url, cached title,
+  last-fetch time, last error; fetched _items_ are never persisted, only
+  ever live) and `static:wire:tempo` (the chosen scroll speed). Every
+  read and write is wrapped in try/catch, since private browsing and
+  storage-disabled Safari can throw on `setItem` -- degrades to
+  in-memory-only for the session rather than crashing the page.
+- **The stop key is unconditional, not a reduced-motion fallback.**
+  WCAG 2.2.2 (Pause, Stop, Hide) applies to any auto-updating content
+  running past five seconds in parallel with other content, independent
+  of a user's motion preference -- a continuously looping ticker needs a
+  reachable stop control regardless of whether reduced motion is set.
+  Reduced motion goes further, following the character generator's
+  transport precedent: the run key is disabled and relabelled ("off --
+  reduced motion") rather than merely slowed. The plain, fully readable
+  headline list beneath the tape is not a fallback shown only when the
+  tape can't run -- it renders unconditionally, always, and is the
+  actual reading surface; the tape is the tactile layer on top of it.
+- **The tape is a JS-driven transform, not a CSS animation**, specifically
+  so the stop key can freeze it exactly in place. A running `@keyframes`
+  animation paused mid-cycle is awkward to resume seamlessly and easy to
+  get subtly wrong; a `requestAnimationFrame` loop that simply stops
+  writing new `transform` values freezes cleanly by construction, which
+  was confirmed in verification by sampling the transform value across a
+  stop.
+- **A per-feed status, not an all-or-nothing one.** A broken feed shows
+  "no signal" in its own row and is retried on the next refresh; it
+  never removes itself and never blocks the other subscribed feeds from
+  rendering -- the same graceful-degradation philosophy as field notes'
+  link-preview fallback cards.
+- **No server-side caching of feed results.** Every refresh -- manual or
+  automatic -- is a live round trip through `/api/feed` to the original
+  server. The only thing bounding that is a 10-minute auto-refresh
+  interval, gated by `document.visibilityState` so a backgrounded tab
+  stops polling entirely rather than hammering someone else's server
+  unattended, catching up immediately on return.
+- **Limits, and why:** 25 items per feed and a 1.5MB capped read (both
+  larger than `render.mjs`'s 300KB OG-scraping cap, since a full feed
+  with descriptions legitimately runs bigger than one page's `<head>`),
+  an 8-second fetch timeout (feed servers run slower than the sites
+  `fetchLinkPreview` targets), and a soft cap of 20 subscribed feeds so
+  a refresh never fires more than 20 parallel requests -- the same
+  bounded-parallelism reasoning as `MAX_LINK_PREVIEWS = 5`.
+- **Verified against real, live feeds, not only fixtures** -- Hacker
+  News, BBC News, NASA, and GitHub's Atom releases/commits feeds, plus
+  the SSRF guard confirmed against `localhost` and a nonexistent domain,
+  all exercised through `astro dev` directly. This route needs neither
+  Supabase nor Netlify to run for real (no auth, no database), so
+  materially more of this feature was checkable locally than any part of
+  the field-notes rebuild above ever was.
+
+Explicitly out of scope: OPML import/export, RSS 1.0/RDF, any audio or
+sound-effect layer, and cross-device sync -- all deferred, none accidental.
+
+Open items: real-world feed diversity beyond what was hand-tested here
+(unusual encodings, more exotic malformed XML, hosts that block an honest
+bot `User-Agent`) will surface parser gaps the way the entity-decoding and
+numeric-entity bugs did -- expected, and the reason `feed.mjs` stayed a
+small, easily-patched module rather than something more clever.

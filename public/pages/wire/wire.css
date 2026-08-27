@@ -1,0 +1,361 @@
+/* "the wire" -- a teletype for other people's RSS/Atom feeds.
+   Commits to the light paper/ink palette only, no phosphor mode: a
+   teletype prints ink on paper, it doesn't glow -- the same single-
+   palette choice character-generator makes for its own reasons.
+
+   Deliberate deviation from the site's usual mono=structure/serif=body
+   split: headlines here stay in --mono throughout, including the
+   readable list, because wire-service copy really was set in monospace
+   on a teleprinter. Only the descriptive intro paragraph uses --serif,
+   matching how every other page treats a paragraph of prose. */
+
+body.page-wire {
+  max-width: none;
+}
+
+.wire-head {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 0;
+}
+
+.wire-head__back {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  margin: 0 0 1.5rem;
+}
+
+.wire-head__back a {
+  color: var(--rust);
+}
+
+.wire-head__back a:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.wire-head__title {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: clamp(2rem, 6vw, 3rem);
+  margin: 0 0 0.75rem;
+}
+
+.wire-head__sub {
+  font-family: var(--serif);
+  color: var(--ink-soft);
+  max-width: 55ch;
+  margin: 0 0 1.5rem;
+}
+
+.wire {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 0 2rem 4rem;
+}
+
+/* ---------------------------------------------------------
+   Add-feed panel
+   --------------------------------------------------------- */
+.wire__panel {
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.wire__add label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.wire__add-row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.wire__add-row input {
+  flex: 1 1 16rem;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.wire__add-row input:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.wire__status {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  min-height: 1.2em;
+  margin: 0.6rem 0 0;
+}
+
+.wire__status[data-state="error"] {
+  color: var(--rust);
+}
+
+.wire__status[data-state="ok"] {
+  color: var(--mint);
+}
+
+/* ---------------------------------------------------------
+   Subscribed feed list
+   --------------------------------------------------------- */
+.wire__sources {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.wire__source {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+}
+
+.wire__source__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wire__source__status {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+  flex: 0 0 auto;
+}
+
+.wire__source__status[data-state="error"] {
+  color: var(--rust);
+}
+
+.wire__source__remove {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink-soft);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+}
+
+.wire__source__remove:hover {
+  border-color: var(--rust);
+  color: var(--rust);
+}
+
+.wire__source__remove:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------
+   Transport: run/stop, tempo, refresh
+   --------------------------------------------------------- */
+.wire__transport {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px dashed var(--line);
+}
+
+.key {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 2px;
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  line-height: 1.2;
+}
+
+.key:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.key__sub {
+  font-size: 0.65rem;
+  color: var(--ink-soft);
+}
+
+.key--run[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.key--run[aria-pressed="true"] .key__sub {
+  color: var(--line);
+}
+
+.key:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.wire__tempo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+}
+
+.wire__tempo legend {
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  padding: 0;
+  margin-right: 0.2rem;
+}
+
+.wire__tempo-opt {
+  position: relative;
+  cursor: pointer;
+}
+
+.wire__tempo-opt input {
+  /* Clipped, not display:none -- stays focusable and answers to the
+     arrow keys like any native radio group; the styled span is what's
+     actually seen. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.wire__tempo-opt span {
+  display: inline-block;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 0.35rem 0.6rem;
+}
+
+.wire__tempo-opt input:checked + span {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.wire__tempo-opt input:focus-visible + span {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------
+   The tape -- decorative, aria-hidden. The readable headline list
+   below is the real content; this is the tactile layer on top.
+   --------------------------------------------------------- */
+.wire__tape-wrap {
+  overflow: hidden;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  padding: 0.9rem 0;
+  margin-bottom: 2rem;
+  background: var(--paper);
+}
+
+.wire__tape {
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.wire__tape-track {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+  will-change: transform;
+}
+
+/* ---------------------------------------------------------
+   Readable headline list -- the primary content, always present
+   regardless of run state or reduced motion.
+   --------------------------------------------------------- */
+.wire__empty {
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.wire__headlines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.wire__headline {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.wire__headline__link {
+  font-family: var(--mono);
+  font-weight: 700;
+  font-size: 1rem;
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+
+.wire__headline__link:hover {
+  border-bottom-color: var(--mint);
+}
+
+.wire__headline__link:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.wire__headline__meta {
+  display: block;
+  margin-top: 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 40rem) {
+  .wire-head,
+  .wire {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .wire__add-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
