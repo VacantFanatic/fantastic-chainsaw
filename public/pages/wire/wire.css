@@ -11,6 +11,24 @@
 
 body.page-wire {
   max-width: none;
+
+  /* Card shadows are the ink at low opacity rather than grey, so the
+     board still reads as ink-on-paper. */
+  --card-shade: color-mix(in srgb, var(--ink) 16%, transparent);
+  --card-shade-deep: color-mix(in srgb, var(--ink) 32%, transparent);
+
+  /* Tape colours, cycled per source. Purely decorative: which feed a
+     headline came from is written out in the card's meta line, so the
+     colour never carries information on its own. */
+  --tape-1: var(--rust);
+  --tape-2: var(--mint);
+  --tape-3: var(--ink-soft);
+  --tape-4: var(--ink);
+
+  /* How wide the headline board is allowed to get. It breaks out past
+     the 46rem column the panel and tape sit in -- a board of slips
+     wants room to spread, a control panel doesn't. */
+  --board-w: min(72rem, calc(100vw - 4rem));
 }
 
 .wire-head {
@@ -62,6 +80,65 @@ body.page-wire {
   border-radius: 2px;
   padding: 1.25rem;
   margin-bottom: 2rem;
+}
+
+/* ---------------------------------------------------------
+   The fold -- native <details>, so the panel collapses with no JS at
+   all and keyboard/AT get the disclosure semantics for free. JS only
+   remembers the last state and keeps the summary's count honest.
+
+   The transport row deliberately sits *outside* the fold: the tape is
+   auto-updating content, so WCAG 2.2.2 wants its stop key present, not
+   one disclosure away.
+   --------------------------------------------------------- */
+.wire__fold__summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  list-style: none;
+  padding: 0.1rem 0;
+}
+
+/* Safari still paints the default triangle without this. */
+.wire__fold__summary::-webkit-details-marker {
+  display: none;
+}
+
+.wire__fold__summary::before {
+  content: "[+]";
+  color: var(--ink-soft);
+  flex: 0 0 auto;
+}
+
+.wire__fold[open] > .wire__fold__summary::before {
+  content: "[-]";
+}
+
+.wire__fold__label {
+  flex: 0 0 auto;
+}
+
+.wire__fold__count {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--ink-soft);
+}
+
+.wire__fold__summary:focus-visible {
+  outline: 2px solid var(--rust);
+  outline-offset: 2px;
+}
+
+.wire__fold__body {
+  padding-top: 1rem;
 }
 
 .wire__add label {
@@ -179,6 +256,11 @@ body.page-wire {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
   border-top: 1px dashed var(--line);
+}
+
+.wire__fold:not([open]) + .wire__transport {
+  margin-top: 1rem;
+  padding-top: 1rem;
 }
 
 .key {
@@ -303,48 +385,150 @@ body.page-wire {
    Readable headline list -- the primary content, always present
    regardless of run state or reduced motion.
    --------------------------------------------------------- */
+.wire__feed {
+  width: var(--board-w);
+  /* .wire is viewport-centred, so half of it minus half the board puts
+     the board's edge exactly where a viewport-centred one would be. */
+  margin-inline: calc(50% - var(--board-w) / 2);
+}
+
 .wire__empty {
   font-family: var(--mono);
   font-size: 0.9rem;
   color: var(--ink-soft);
+  max-width: 46rem;
+  margin-inline: auto;
 }
 
+/* ---------------------------------------------------------
+   The board -- each headline is a slip of wire copy tossed onto a
+   table: tilted, nudged off the grid line, taped at one corner and
+   stamped with its number. The tilt and nudge are derived in JS from a
+   hash of the headline itself, so a given slip keeps its angle across
+   refreshes instead of reshuffling every ten minutes.
+
+   Under reduced motion the whole thing squares up into a plain grid --
+   still cards, still taped and stamped, just not thrown.
+   --------------------------------------------------------- */
 .wire__headlines {
   list-style: none;
   margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--line);
+  padding: 0.75rem 0 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 1.75rem 1.25rem;
+  counter-reset: slip;
 }
 
 .wire__headline {
-  padding: 0.9rem 0;
-  border-bottom: 1px solid var(--line);
+  --tilt: 0deg;
+  --nudge: 0rem;
+  --tape: var(--line);
+
+  position: relative;
+  margin-top: var(--nudge);
+  padding: 1.1rem 1rem 0.9rem;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  rotate: var(--tilt);
+  box-shadow: 0.3rem 0.4rem 0 -0.05rem var(--card-shade);
+  transition:
+    rotate var(--transition-speed) ease,
+    translate var(--transition-speed) ease,
+    box-shadow var(--transition-speed) ease,
+    border-color var(--transition-speed) ease;
+}
+
+/* A strip of tape across the top-left corner. */
+.wire__headline::before {
+  content: "";
+  position: absolute;
+  top: -0.35rem;
+  left: 0.9rem;
+  width: 2.75rem;
+  height: 0.7rem;
+  background: var(--tape);
+  opacity: 0.85;
+  border-radius: 1px;
+}
+
+/* The slip number, straight off the <ol>'s own counter. */
+.wire__headline::after {
+  counter-increment: slip;
+  content: counter(slip, decimal-leading-zero);
+  position: absolute;
+  top: 0.55rem;
+  right: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* Pick the whole slip up, not just the link. */
+.wire__headline:hover,
+.wire__headline:focus-within {
+  rotate: 0deg;
+  translate: 0 -0.35rem;
+  border-color: var(--ink);
+  box-shadow: 0.5rem 0.7rem 0 -0.05rem var(--card-shade-deep);
+  z-index: 2;
+}
+
+.wire__headline:has(.wire__headline__link[href]) {
+  cursor: pointer;
 }
 
 .wire__headline__link {
   font-family: var(--mono);
   font-weight: 700;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  line-height: 1.35;
   color: inherit;
   text-decoration: none;
   border-bottom: 2px solid transparent;
 }
 
-.wire__headline__link:hover {
+/* Stretched target: the whole slip is the link. Only when there's
+   somewhere to go -- an item with no link stays inert, per the site
+   rule that anything which isn't a real destination isn't an <a href>. */
+.wire__headline__link[href]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+}
+
+.wire__headline:hover .wire__headline__link[href] {
   border-bottom-color: var(--mint);
 }
 
 .wire__headline__link:focus-visible {
   outline: 2px solid var(--rust);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .wire__headline__meta {
   display: block;
-  margin-top: 0.3rem;
+  margin-top: 0.55rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--line);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--ink-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wire__headline {
+    rotate: 0deg;
+    margin-top: 0;
+  }
+
+  .wire__headline:hover,
+  .wire__headline:focus-within {
+    translate: none;
+  }
 }
 
 @media (max-width: 40rem) {
@@ -352,6 +536,10 @@ body.page-wire {
   .wire {
     padding-left: 1.25rem;
     padding-right: 1.25rem;
+  }
+
+  body.page-wire {
+    --board-w: min(72rem, calc(100vw - 2.5rem));
   }
 
   .wire__add-row {

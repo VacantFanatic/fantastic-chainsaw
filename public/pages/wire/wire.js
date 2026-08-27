@@ -14,12 +14,33 @@
 
 const STORAGE_KEY_FEEDS = "static:wire:feeds";
 const STORAGE_KEY_TEMPO = "static:wire:tempo";
+const STORAGE_KEY_FOLD = "static:wire:sources-open";
 const MAX_FEEDS = 20;
 const MAX_HEADLINES_SHOWN = 100;
 const AUTO_REFRESH_MS = 10 * 60 * 1000;
 
 // Tape scroll speed in pixels per second.
 const TEMPO_SPEED = { slow: 25, medium: 50, fast: 90 };
+
+// How a headline slip is thrown onto the board. Both are picked from a
+// hash of the headline itself rather than its position, so a slip keeps
+// the same angle when the list reshuffles around it on refresh --
+// otherwise the whole board would visibly re-deal every ten minutes.
+const SLIP_TILTS = [
+  "-1.7deg",
+  "1.1deg",
+  "-0.6deg",
+  "1.6deg",
+  "-1.2deg",
+  "0.5deg",
+];
+const SLIP_NUDGES = ["0rem", "0.8rem", "0.25rem", "1.1rem", "0.5rem", "0rem"];
+const SLIP_TAPES = [
+  "var(--tape-1)",
+  "var(--tape-2)",
+  "var(--tape-3)",
+  "var(--tape-4)",
+];
 
 const prefersReducedMotion = window.matchMedia(
   "(prefers-reduced-motion: reduce)",
@@ -57,6 +78,24 @@ function loadTempo() {
   }
 }
 
+function loadFoldOpen() {
+  try {
+    // Default open: the panel is how you get a feed in at all, and a
+    // first-time reader shouldn't have to find it behind a summary.
+    return localStorage.getItem(STORAGE_KEY_FOLD) !== "0";
+  } catch {
+    return true;
+  }
+}
+
+function saveFoldOpen(open) {
+  try {
+    localStorage.setItem(STORAGE_KEY_FOLD, open ? "1" : "0");
+  } catch {
+    /* ignored -- same reasoning as saveFeeds */
+  }
+}
+
 function saveTempo(tempo) {
   try {
     localStorage.setItem(STORAGE_KEY_TEMPO, tempo);
@@ -81,6 +120,17 @@ function normalizeUrl(url) {
 
 function byId(id) {
   return document.getElementById(id);
+}
+
+// FNV-1a. Not for anything that matters -- just a stable way to turn a
+// headline into the same tilt every time it's rendered.
+function hashString(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
 }
 
 /* ---------------------------------------------------------
@@ -208,6 +258,18 @@ function mergedSortedItems() {
    Rendering -- textContent throughout; feed content is untrusted.
    --------------------------------------------------------- */
 
+function renderFoldCount() {
+  const count = byId("fold-count");
+  if (feeds.length === 0) {
+    count.textContent = "nothing spliced in";
+    return;
+  }
+  const bits = [`${feeds.length} ${feeds.length === 1 ? "feed" : "feeds"}`];
+  const down = feeds.filter((f) => f.lastError).length;
+  if (down > 0) bits.push(`${down} no signal`);
+  count.textContent = bits.join(" · ");
+}
+
 function renderSources() {
   const list = byId("sources-list");
   list.textContent = "";
@@ -275,6 +337,17 @@ function renderHeadlines(items) {
     const li = document.createElement("li");
     li.className = "wire__headline";
 
+    const h = hashString(item.link || item.title || "");
+    li.style.setProperty("--tilt", SLIP_TILTS[h % SLIP_TILTS.length]);
+    li.style.setProperty(
+      "--nudge",
+      SLIP_NUDGES[(h >>> 3) % SLIP_NUDGES.length],
+    );
+    li.style.setProperty(
+      "--tape",
+      SLIP_TAPES[hashString(item.sourceTitle || "") % SLIP_TAPES.length],
+    );
+
     const link = document.createElement("a");
     link.className = "wire__headline__link";
     link.textContent = item.title;
@@ -308,6 +381,7 @@ function renderTape(items) {
 
 function renderAll() {
   const items = mergedSortedItems();
+  renderFoldCount();
   renderSources();
   renderHeadlines(items);
   renderTape(items);
@@ -375,6 +449,17 @@ function setRunState(isRunning) {
 
   if (isRunning) startTape();
   else stopTape();
+}
+
+/* ---------------------------------------------------------
+   The fold -- <details> does the collapsing itself; this only restores
+   the remembered state and records changes to it.
+   --------------------------------------------------------- */
+
+function wireFold() {
+  const fold = byId("feeds-fold");
+  fold.open = loadFoldOpen();
+  fold.addEventListener("toggle", () => saveFoldOpen(fold.open));
 }
 
 function wireTransport() {
@@ -449,6 +534,7 @@ byId("add-feed-form").addEventListener("submit", (event) => {
   });
 });
 
+wireFold();
 wireTransport();
 renderAll();
 refreshAllFeeds();
