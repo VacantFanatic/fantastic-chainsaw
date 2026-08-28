@@ -372,12 +372,35 @@ function renderTape(items) {
     track.textContent = prefersReducedMotion
       ? ""
       : "nothing on the wire yet — splice in a feed above ▊";
-    return;
+  } else {
+    const line = items.map((item) => item.title).join("   ★   ");
+    // Doubled, back to back, so a -50% scroll loops seamlessly.
+    track.textContent = `${line}   ★   ${line}   ★   `;
   }
-  const line = items.map((item) => item.title).join("   ★   ");
-  // Doubled, back to back, so a -50% scroll loops seamlessly.
-  track.textContent = `${line}   ★   ${line}   ★   `;
+  // Every path that writes to the track re-measures it. An early return
+  // here would leave the loop point at 0, and a tape that never wraps
+  // just scrolls away and leaves the page blank.
+  measureTape();
 }
+
+// The tape's loop point, measured once per content change instead of once
+// per frame. Reading scrollWidth forces layout, and doing it inside the
+// rAF callback -- right after writing a transform -- is the textbook
+// layout thrash: Lighthouse measured 31ms of forced reflow on this page
+// and pointed straight at it. The width only changes when the content
+// does, when the window resizes, or when the webfont finally swaps in.
+let tapeHalfWidth = 0;
+
+function measureTape() {
+  const track = byId("tape-track");
+  tapeHalfWidth = track ? track.scrollWidth / 2 : 0;
+}
+
+window.addEventListener("resize", measureTape);
+// Space Mono arrives after first paint, and the tape gets wider when it
+// does. Without this the loop point would stay at the fallback font's
+// measurement for the rest of the session.
+if (document.fonts?.ready) document.fonts.ready.then(measureTape);
 
 function renderAll() {
   const items = mergedSortedItems();
@@ -406,9 +429,8 @@ function tapeStep(timestamp) {
   lastFrameTime = timestamp;
 
   tapeOffset -= TEMPO_SPEED[tempo] * deltaSeconds;
-  const halfWidth = track.scrollWidth / 2;
-  if (halfWidth > 0 && -tapeOffset >= halfWidth) {
-    tapeOffset += halfWidth;
+  if (tapeHalfWidth > 0 && -tapeOffset >= tapeHalfWidth) {
+    tapeOffset += tapeHalfWidth;
   }
   track.style.transform = `translateX(${tapeOffset}px)`;
 

@@ -1379,8 +1379,17 @@ before trusting a green CI on a schema change.
 
 ## Found while building the pinboard (2026-08-27)
 
-**`--rust` on `--paper` is 4.33:1, which is under AA for small text.**
-Still open. It affects `.back-link a` and the RSS link on every field
+**`--rust` on `--paper` was under AA for small text — FIXED.**
+Lighthouse independently caught it on the wire's back-link (4.46:1
+measured against the 4.5 threshold, at 12.8px). `--rust` is now `#ad4218`
+rather than `#b8461a`: 4.92:1 on `--paper` and 5.63:1 on `--card`, with
+margin rather than by a hair. The token was darkened rather than split,
+because nothing wanted the lighter value for its own sake — it is text,
+two borders and two dots, and all five are happier darker. The pinboard's
+“tidy the board” button keeps its `--ink` label anyway; it reads better
+against the card than an accent colour does.
+
+The original note, for context: It affects `.back-link a` and the RSS link on every field
 notes page, and it predates the pinboard — the board just made it visible
 by needing another control. The pinboard’s “tidy the board” button dodges
 it by setting its label in `--ink` and leaving `--rust` on the border,

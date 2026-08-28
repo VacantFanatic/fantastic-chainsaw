@@ -20,6 +20,15 @@ body.page-wire {
   /* Tape colours, cycled per source. Purely decorative: which feed a
      headline came from is written out in the card's meta line, so the
      colour never carries information on its own. */
+  /* The tape's own face. Special Elite is a struck-typewriter design --
+     uneven inking, letters that sit slightly off the baseline -- which is
+     the Brazil register: a future imagined by a ministry that still runs
+     on carbon paper. Only the tape uses it; the rest of the page stays in
+     --mono, because a teleprinter and its paperwork are not the same
+     machine. Falls back through Courier to the site mono, both of which
+     are also typewriter-shaped, so a blocked webfont degrades in kind. */
+  --telex: "Special Elite", "Courier New", var(--mono);
+
   --tape-1: var(--rust);
   --tape-2: var(--mint);
   --tape-3: var(--ink-soft);
@@ -375,9 +384,11 @@ body.page-wire {
 
 .wire__tape-track {
   display: inline-block;
-  font-family: var(--mono);
-  font-size: 1rem;
-  letter-spacing: 0.02em;
+  font-family: var(--telex);
+  /* Special Elite runs small for its point size and has no bold, so it
+     gets a little more room and a little more air than Space Mono did. */
+  font-size: 1.15rem;
+  letter-spacing: 0.04em;
   will-change: transform;
 }
 
