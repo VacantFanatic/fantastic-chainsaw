@@ -5,7 +5,14 @@
   --paper: #f2ead9;
   --ink: #21283b;
   --ink-soft: #565f7c;
-  --rust: #b8461a;
+  /* Darkened from #b8461a, which measured 4.47:1 on --paper and so
+     failed AA for body-size text -- Lighthouse flagged the wire's own
+     back-link, and the same pairing was under on every field notes link.
+     This clears it at 4.92:1 on --paper and 5.63:1 on --card, with margin
+     rather than by a hair. Rust is also a border and two dots; darkening
+     the one token fixes the text everywhere without splitting it, since
+     nothing wanted the lighter value for its own sake. */
+  --rust: #ad4218;
   --mint: #5f9e8d;
   --line: #cbb99a;
 
