@@ -323,7 +323,9 @@ export async function fetchLinkPreview(url) {
         // An honest bot UA, not a spoofed browser one -- og: tags exist
         // specifically for link-unfurling bots (Slack, Twitter, Discord
         // all identify themselves the same way).
-        "User-Agent": "STATICFieldNotesBot/1.0 (+link preview)",
+        // Same reason feed.mjs drops the word "Bot": some CDNs tarpit a
+        // User-Agent containing it rather than refusing outright.
+        "User-Agent": "STATICFieldNotes/1.0 (+link preview)",
         Accept: "text/html,application/xhtml+xml",
       },
     });

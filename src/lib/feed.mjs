@@ -193,7 +193,16 @@ export async function fetchFeed(url) {
       signal: controller.signal,
       redirect: "follow",
       headers: {
-        "User-Agent": "STATICWireBot/1.0 (+feed reader)",
+        // No "Bot" in this string, and that is not cosmetic. CBC's edge
+        // (and it will not be the only one) tarpits any User-Agent
+        // containing that substring: the connection is accepted and then
+        // simply never answered, so the request dies on the timeout below
+        // rather than returning 403. Bisected against the live feed:
+        // "STATICWireBot/1.0", "STATICBot/1.0" and "WireBot/1.0" all hang
+        // until the abort; "STATICWire/1.0 (+feed reader)" answers in
+        // ~100ms, as does "feedparser/6.0". The token is what matters.
+        // Still an honest identifier -- it just isn't a substring match.
+        "User-Agent": "STATICWire/1.0 (+feed reader)",
         // Permissive: many real feeds mislabel their own content-type.
         Accept:
           "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html, */*",
